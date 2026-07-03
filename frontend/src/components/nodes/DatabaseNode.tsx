@@ -6,5 +6,5 @@ type NodeProps = {
 }
 
 export function DatabaseNode(props: NodeProps) {
-  return <BaseNode {...props} />
+  return <BaseNode {...props} className="node-type-database" />
 }

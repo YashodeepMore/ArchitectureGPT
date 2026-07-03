@@ -6,5 +6,5 @@ type NodeProps = {
 }
 
 export function ApiNode(props: NodeProps) {
-  return <BaseNode {...props} />
+  return <BaseNode {...props} className="node-type-api" />
 }

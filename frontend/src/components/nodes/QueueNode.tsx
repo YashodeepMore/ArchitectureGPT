@@ -6,5 +6,5 @@ type NodeProps = {
 }
 
 export function QueueNode(props: NodeProps) {
-  return <BaseNode {...props} />
+  return <BaseNode {...props} className="node-type-queue" />
 }

@@ -6,5 +6,5 @@ type NodeProps = {
 }
 
 export function GatewayNode(props: NodeProps) {
-  return <BaseNode {...props} />
+  return <BaseNode {...props} className="node-type-gateway" />
 }

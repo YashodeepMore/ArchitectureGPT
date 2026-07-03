@@ -1,7 +1,7 @@
 import type { Edge, Node } from '@xyflow/react'
-import { Position } from "@xyflow/react"
 import type { Diagram } from '../types/diagram'
 import { applyDagreLayout } from './applyDagreLayout'
+import { routeEdges } from '../layout/edgeRouting'
 
 export type DiagramNodeData = {
   label: string
@@ -25,22 +25,32 @@ export function diagramToReactFlow(diagram: Diagram) {
     position: node.position,
     parentId: node.parent ?? undefined,
     extent: node.parent ? 'parent' : undefined,
-    // sourcePosition: Position.Bottom,
-    // targetPosition: Position.Left,
     data: { label: node.label },
   }))
 
-  const edges: Edge[] = diagram.edges.map((edge) => ({
+  const rawEdges: Edge[] = diagram.edges.map((edge) => ({
     id: edge.id,
     source: edge.source,
     target: edge.target,
-    type:"step",
   }))
 
-  const nodes = [...groupNodes, ...diagramNodes]
+  const rawNodes = [...groupNodes, ...diagramNodes]
+  const laidOutNodes = applyDagreLayout(rawNodes, rawEdges)
+
+  const routedEdges = routeEdges(laidOutNodes, rawEdges).map((edge) => ({
+    ...edge,
+    type: 'smoothstep',
+    pathOptions: {
+      borderRadius: 12,
+    },
+    style: {
+      stroke: '#94a3b8',
+      strokeWidth: 2,
+    },
+  }))
 
   return {
-    nodes: applyDagreLayout(nodes, edges),
-    edges,
+    nodes: laidOutNodes,
+    edges: routedEdges,
   }
 }

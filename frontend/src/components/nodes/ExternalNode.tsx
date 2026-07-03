@@ -6,5 +6,5 @@ type NodeProps = {
 }
 
 export function ExternalNode(props: NodeProps) {
-  return <BaseNode {...props} />
+  return <BaseNode {...props} className="node-type-external" />
 }
