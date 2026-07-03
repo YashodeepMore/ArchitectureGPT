@@ -4,45 +4,54 @@ import type { DiagramNodeData } from './diagramToReactFlow'
 
 const NODE_WIDTH = 180
 const NODE_HEIGHT = 64
-const GROUP_WIDTH = 320
-const GROUP_HEIGHT = 220
-const GROUP_PADDING = 48
+const GROUP_HEADER_HEIGHT = 40
+const GROUP_PADDING = 32
 
-const NODE_SPACING = 80
-const RANK_SPACING = 120
+const CHILD_NODE_SPACING = 32
+const CHILD_RANK_SPACING = 56
+const CONTAINER_SPACING = 120
+const CONTAINER_RANK_SPACING = 180
 
-function getNodeSize(node: Node<DiagramNodeData>) {
-  if (node.type === 'group') {
-    return {
-      width: Number(node.style?.width) || GROUP_WIDTH,
-      height: Number(node.style?.height) || GROUP_HEIGHT,
-    }
-  }
+type NodeSize = {
+  width: number
+  height: number
+}
 
+function getDefaultNodeSize(): NodeSize {
   return {
     width: NODE_WIDTH,
     height: NODE_HEIGHT,
   }
 }
 
-function createLayoutGraph() {
+function getNodeSize(node: Node<DiagramNodeData>): NodeSize {
+  return {
+    width: Number(node.style?.width) || NODE_WIDTH,
+    height: Number(node.style?.height) || NODE_HEIGHT,
+  }
+}
+
+function createLayoutGraph(rankdir: 'TB' | 'LR', nodesep: number, ranksep: number) {
   const graph = new dagre.graphlib.Graph()
 
   graph.setDefaultEdgeLabel(() => ({}))
   graph.setGraph({
-    rankdir: 'TB',
-    nodesep: NODE_SPACING,
-    ranksep: RANK_SPACING,
+    rankdir,
+    nodesep,
+    ranksep,
   })
 
   return graph
 }
 
-function layoutNodeSet(
+function layoutWithDagre(
   nodes: Node<DiagramNodeData>[],
   edges: Edge[],
+  rankdir: 'TB' | 'LR',
+  nodesep: number,
+  ranksep: number,
 ) {
-  const graph = createLayoutGraph()
+  const graph = createLayoutGraph(rankdir, nodesep, ranksep)
   const nodeIds = new Set(nodes.map((node) => node.id))
 
   nodes.forEach((node) => {
@@ -73,11 +82,139 @@ function layoutNodeSet(
   })
 }
 
-export function applyDagreLayout(
+function layoutChildrenVertically(
+  children: Node<DiagramNodeData>[],
+  edges: Edge[],
+) {
+  return layoutWithDagre(
+    children,
+    edges,
+    'TB',
+    CHILD_NODE_SPACING,
+    CHILD_RANK_SPACING,
+  )
+}
+
+function layoutChildrenInGrid(children: Node<DiagramNodeData>[]) {
+  const columns = Math.ceil(Math.sqrt(children.length))
+  const size = getDefaultNodeSize()
+
+  return children.map((child, index) => {
+    const row = Math.floor(index / columns)
+    const column = index % columns
+
+    return {
+      ...child,
+      position: {
+        x: column * (size.width + CHILD_NODE_SPACING),
+        y: row * (size.height + CHILD_NODE_SPACING),
+      },
+    }
+  })
+}
+
+function getBounds(nodes: Node<DiagramNodeData>[]) {
+  if (nodes.length === 0) {
+    return {
+      minX: 0,
+      minY: 0,
+      maxX: 0,
+      maxY: 0,
+    }
+  }
+
+  return nodes.reduce(
+    (bounds, node) => {
+      const size = getNodeSize(node)
+
+      return {
+        minX: Math.min(bounds.minX, node.position.x),
+        minY: Math.min(bounds.minY, node.position.y),
+        maxX: Math.max(bounds.maxX, node.position.x + size.width),
+        maxY: Math.max(bounds.maxY, node.position.y + size.height),
+      }
+    },
+    {
+      minX: Number.POSITIVE_INFINITY,
+      minY: Number.POSITIVE_INFINITY,
+      maxX: Number.NEGATIVE_INFINITY,
+      maxY: Number.NEGATIVE_INFINITY,
+    },
+  )
+}
+
+function getEdgesInsideParent(edges: Edge[], children: Node<DiagramNodeData>[]) {
+  const childIds = new Set(children.map((child) => child.id))
+
+  return edges.filter(
+    (edge) => childIds.has(edge.source) && childIds.has(edge.target),
+  )
+}
+
+function layoutChildren(children: Node<DiagramNodeData>[], edges: Edge[]) {
+  if (children.length >= 4) {
+    return layoutChildrenInGrid(children)
+  }
+
+  return layoutChildrenVertically(children, edges)
+}
+
+function applyContainerPadding(nodes: Node<DiagramNodeData>[]) {
+  const bounds = getBounds(nodes)
+
+  return nodes.map((node) => ({
+    ...node,
+    position: {
+      x: node.position.x - bounds.minX + GROUP_PADDING,
+      y: node.position.y - bounds.minY + GROUP_HEADER_HEIGHT,
+    },
+  }))
+}
+
+function getContainerSize(children: Node<DiagramNodeData>[]): NodeSize {
+  const bounds = getBounds(children)
+
+  return {
+    width: bounds.maxX + GROUP_PADDING,
+    height: bounds.maxY + GROUP_PADDING,
+  }
+}
+
+function buildTopLevelEdges(
   nodes: Node<DiagramNodeData>[],
   edges: Edge[],
 ) {
   const nodeById = new Map(nodes.map((node) => [node.id, node]))
+  const topLevelEdges: Edge[] = []
+  const seenEdges = new Set<string>()
+
+  edges.forEach((edge) => {
+    const sourceNode = nodeById.get(edge.source)
+    const targetNode = nodeById.get(edge.target)
+    const source = sourceNode?.parentId ?? edge.source
+    const target = targetNode?.parentId ?? edge.target
+
+    if (source === target) {
+      return
+    }
+
+    const edgeKey = `${source}->${target}`
+
+    if (seenEdges.has(edgeKey)) {
+      return
+    }
+
+    seenEdges.add(edgeKey)
+    topLevelEdges.push({ ...edge, source, target })
+  })
+
+  return topLevelEdges
+}
+
+export function applyDagreLayout(
+  nodes: Node<DiagramNodeData>[],
+  edges: Edge[],
+) {
   const childrenByParent = new Map<string, Node<DiagramNodeData>[]>()
 
   nodes.forEach((node) => {
@@ -90,39 +227,50 @@ export function applyDagreLayout(
     childrenByParent.set(node.parentId, children)
   })
 
-  const topLevelNodes = nodes.filter((node) => !node.parentId)
-  const topLevelEdges: Edge[] = []
-
-  edges.forEach((edge) => {
-    const sourceNode = nodeById.get(edge.source)
-    const targetNode = nodeById.get(edge.target)
-    const source = sourceNode?.parentId ?? edge.source
-    const target = targetNode?.parentId ?? edge.target
-
-    if (source !== target) {
-      topLevelEdges.push({ ...edge, source, target })
-    }
-  })
-
-  const laidOutTopLevelNodes = layoutNodeSet(topLevelNodes, topLevelEdges)
-
+  const laidOutChildrenByParent = new Map<string, Node<DiagramNodeData>[]>()
   const laidOutChildren = Array.from(childrenByParent.entries()).flatMap(
     ([parentId, children]) => {
-      const childIds = new Set(children.map((child) => child.id))
-      const childEdges = edges.filter(
-        (edge) => childIds.has(edge.source) && childIds.has(edge.target),
-      )
-
-      // Child positions stay relative to the group node in React Flow.
-      return layoutNodeSet(children, childEdges).map((child) => ({
+      const childEdges = getEdgesInsideParent(edges, children)
+      const paddedChildren = applyContainerPadding(
+        layoutChildren(children, childEdges),
+      ).map((child) => ({
         ...child,
-        position: {
-          x: child.position.x + GROUP_PADDING,
-          y: child.position.y + GROUP_PADDING,
-        },
         parentId,
       }))
+
+      laidOutChildrenByParent.set(parentId, paddedChildren)
+      return paddedChildren
     },
+  )
+
+  const topLevelNodes = nodes
+    .filter((node) => !node.parentId)
+    .map((node) => {
+      const children = laidOutChildrenByParent.get(node.id) ?? []
+
+      if (node.type !== 'group' || children.length === 0) {
+        return node
+      }
+
+      const size = getContainerSize(children)
+
+      return {
+        ...node,
+        style: {
+          ...node.style,
+          width: size.width,
+          height: size.height,
+        },
+      }
+    })
+
+  // Containers are laid out after sizing, so horizontal spacing uses real bounds.
+  const laidOutTopLevelNodes = layoutWithDagre(
+    topLevelNodes,
+    buildTopLevelEdges(nodes, edges),
+    'LR',
+    CONTAINER_SPACING,
+    CONTAINER_RANK_SPACING,
   )
 
   return [...laidOutTopLevelNodes, ...laidOutChildren]
