@@ -1,4 +1,5 @@
 import type { Edge, Node } from '@xyflow/react'
+import { Position } from "@xyflow/react"
 import type { Diagram } from '../types/diagram'
 import { applyDagreLayout } from './applyDagreLayout'
 
@@ -24,6 +25,8 @@ export function diagramToReactFlow(diagram: Diagram) {
     position: node.position,
     parentId: node.parent ?? undefined,
     extent: node.parent ? 'parent' : undefined,
+    // sourcePosition: Position.Bottom,
+    // targetPosition: Position.Left,
     data: { label: node.label },
   }))
 
@@ -31,6 +34,7 @@ export function diagramToReactFlow(diagram: Diagram) {
     id: edge.id,
     source: edge.source,
     target: edge.target,
+    type:"step",
   }))
 
   const nodes = [...groupNodes, ...diagramNodes]

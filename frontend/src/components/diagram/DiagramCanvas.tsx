@@ -30,7 +30,12 @@ export function DiagramCanvas() {
     setNodes(flow.nodes)
     setEdges(flow.edges)
   }, [diagram, setEdges, setNodes])
-
+  console.log(edges);
+  console.log(nodes.map(n => ({
+    id: n.id,
+    type: n.type
+  })));
+  
   return (
     <div className="diagram-canvas">
       <ReactFlow
