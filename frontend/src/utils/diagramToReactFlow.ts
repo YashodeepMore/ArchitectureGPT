@@ -1,5 +1,6 @@
 import type { Edge, Node } from '@xyflow/react'
 import type { Diagram } from '../types/diagram'
+import { applyDagreLayout } from './applyDagreLayout'
 
 export type DiagramNodeData = {
   label: string
@@ -32,8 +33,10 @@ export function diagramToReactFlow(diagram: Diagram) {
     target: edge.target,
   }))
 
+  const nodes = [...groupNodes, ...diagramNodes]
+
   return {
-    nodes: [...groupNodes, ...diagramNodes],
+    nodes: applyDagreLayout(nodes, edges),
     edges,
   }
 }
