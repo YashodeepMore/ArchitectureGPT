@@ -39,7 +39,7 @@ export function diagramToReactFlow(diagram: Diagram) {
 
   const routedEdges = routeEdges(laidOutNodes, rawEdges).map((edge) => ({
     ...edge,
-    type: 'smoothstep',
+    type: 'custom',
     pathOptions: {
       borderRadius: 12,
     },

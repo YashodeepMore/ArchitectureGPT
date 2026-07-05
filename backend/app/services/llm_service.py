@@ -40,133 +40,133 @@ client = OpenAI(
 
 def generate_diagram_from_prompt(prompt: str) -> Diagram:
     try:
-      response = client.chat.completions.create(
-          model="openai/gpt-oss-120b:free",  # change later if needed
-          messages=[
-              {
-                  "role": "system",
-                  "content": llm_structured_prompt,
-              },
-              {"role": "user", "content": prompt},
-          ],
-      )
+    #   response = client.chat.completions.create(
+    #       model="openai/gpt-oss-120b:free",  # change later if needed
+    #       messages=[
+    #           {
+    #               "role": "system",
+    #               "content": llm_structured_prompt,
+    #           },
+    #           {"role": "user", "content": prompt},
+    #       ],
+    #   )
 
-      content = response.choices[0].message.content
+    #   content = response.choices[0].message.content
 
-#       content = """{
-#   "id": "hospital-web-app-diagram",
-#   "nodes": [
-#     {
-#       "id": "web-ui",
-#       "type": "frontend",
-#       "label": "Web UI",
-#       "position": { "x": 100, "y": 100 },
-#       "parent": "frontend-group"
-#     },
-#     {
-#       "id": "mobile-app",
-#       "type": "frontend",
-#       "label": "Mobile App",
-#       "position": { "x": 100, "y": 200 },
-#       "parent": "frontend-group"
-#     },
-#     {
-#       "id": "api-gateway",
-#       "type": "gateway",
-#       "label": "API Gateway",
-#       "position": { "x": 300, "y": 150 },
-#       "parent": "backend-group"
-#     },
-#     {
-#       "id": "auth-service",
-#       "type": "service",
-#       "label": "Auth Service",
-#       "position": { "x": 500, "y": 80 },
-#       "parent": "backend-group"
-#     },
-#     {
-#       "id": "patient-service",
-#       "type": "service",
-#       "label": "Patient Service",
-#       "position": { "x": 500, "y": 130 },
-#       "parent": "backend-group"
-#     },
-#     {
-#       "id": "appointment-service",
-#       "type": "service",
-#       "label": "Appointment Service",
-#       "position": { "x": 500, "y": 180 },
-#       "parent": "backend-group"
-#     },
-#     {
-#       "id": "notification-service",
-#       "type": "service",
-#       "label": "Notification Service",
-#       "position": { "x": 500, "y": 230 },
-#       "parent": "backend-group"
-#     },
-#     {
-#       "id": "redis-cache",
-#       "type": "cache",
-#       "label": "Redis Cache",
-#       "position": { "x": 700, "y": 80 },
-#       "parent": "backend-group"
-#     },
-#     {
-#       "id": "postgres-db",
-#       "type": "database",
-#       "label": "PostgreSQL",
-#       "position": { "x": 700, "y": 200 },
-#       "parent": "database-group"
-#     },
-#     {
-#       "id": "email-provider",
-#       "type": "external",
-#       "label": "Email Provider",
-#       "position": { "x": 900, "y": 80 },
-#       "parent": null
-#     }
-#   ],
-#   "edges": [
-#     { "id": "e1", "source": "web-ui", "target": "api-gateway" },
-#     { "id": "e2", "source": "mobile-app", "target": "api-gateway" },
-#     { "id": "e3", "source": "api-gateway", "target": "auth-service" },
-#     { "id": "e4", "source": "api-gateway", "target": "patient-service" },
-#     { "id": "e5", "source": "api-gateway", "target": "appointment-service" },
-#     { "id": "e6", "source": "api-gateway", "target": "notification-service" },
-#     { "id": "e7", "source": "auth-service", "target": "postgres-db" },
-#     { "id": "e8", "source": "patient-service", "target": "postgres-db" },
-#     { "id": "e9", "source": "appointment-service", "target": "postgres-db" },
-#     { "id": "e10", "source": "notification-service", "target": "redis-cache" },
-#     { "id": "e11", "source": "notification-service", "target": "email-provider" }
-#   ],
-#   "groups": [
-#     {
-#       "id": "frontend-group",
-#       "label": "Frontend",
-#       "position": { "x": 50, "y": 50 },
-#       "width": 200,
-#       "height": 200
-#     },
-#     {
-#       "id": "backend-group",
-#       "label": "Backend",
-#       "position": { "x": 250, "y": 30 },
-#       "width": 600,
-#       "height": 300
-#     },
-#     {
-#       "id": "database-group",
-#       "label": "Database",
-#       "position": { "x": 650, "y": 150 },
-#       "width": 200,
-#       "height": 100
-#     }
-#   ],
-#   "metadata": {
-#     "title": "Hospital Web Application Architecture"
-#   }
-# }"""
+      content = """{
+  "id": "hospital-web-app-diagram",
+  "nodes": [
+    {
+      "id": "web-ui",
+      "type": "frontend",
+      "label": "Web UI",
+      "position": { "x": 100, "y": 100 },
+      "parent": "frontend-group"
+    },
+    {
+      "id": "mobile-app",
+      "type": "frontend",
+      "label": "Mobile App",
+      "position": { "x": 100, "y": 200 },
+      "parent": "frontend-group"
+    },
+    {
+      "id": "api-gateway",
+      "type": "gateway",
+      "label": "API Gateway",
+      "position": { "x": 300, "y": 150 },
+      "parent": "backend-group"
+    },
+    {
+      "id": "auth-service",
+      "type": "service",
+      "label": "Auth Service",
+      "position": { "x": 500, "y": 80 },
+      "parent": "backend-group"
+    },
+    {
+      "id": "patient-service",
+      "type": "service",
+      "label": "Patient Service",
+      "position": { "x": 500, "y": 130 },
+      "parent": "backend-group"
+    },
+    {
+      "id": "appointment-service",
+      "type": "service",
+      "label": "Appointment Service",
+      "position": { "x": 500, "y": 180 },
+      "parent": "backend-group"
+    },
+    {
+      "id": "notification-service",
+      "type": "service",
+      "label": "Notification Service",
+      "position": { "x": 500, "y": 230 },
+      "parent": "backend-group"
+    },
+    {
+      "id": "redis-cache",
+      "type": "cache",
+      "label": "Redis Cache",
+      "position": { "x": 700, "y": 80 },
+      "parent": "backend-group"
+    },
+    {
+      "id": "postgres-db",
+      "type": "database",
+      "label": "PostgreSQL",
+      "position": { "x": 700, "y": 200 },
+      "parent": "database-group"
+    },
+    {
+      "id": "email-provider",
+      "type": "external",
+      "label": "Email Provider",
+      "position": { "x": 900, "y": 80 },
+      "parent": null
+    }
+  ],
+  "edges": [
+    { "id": "e1", "source": "web-ui", "target": "api-gateway" },
+    { "id": "e2", "source": "mobile-app", "target": "api-gateway" },
+    { "id": "e3", "source": "api-gateway", "target": "auth-service" },
+    { "id": "e4", "source": "api-gateway", "target": "patient-service" },
+    { "id": "e5", "source": "api-gateway", "target": "appointment-service" },
+    { "id": "e6", "source": "api-gateway", "target": "notification-service" },
+    { "id": "e7", "source": "auth-service", "target": "postgres-db" },
+    { "id": "e8", "source": "patient-service", "target": "postgres-db" },
+    { "id": "e9", "source": "appointment-service", "target": "postgres-db" },
+    { "id": "e10", "source": "notification-service", "target": "redis-cache" },
+    { "id": "e11", "source": "notification-service", "target": "email-provider" }
+  ],
+  "groups": [
+    {
+      "id": "frontend-group",
+      "label": "Frontend",
+      "position": { "x": 50, "y": 50 },
+      "width": 200,
+      "height": 200
+    },
+    {
+      "id": "backend-group",
+      "label": "Backend",
+      "position": { "x": 250, "y": 30 },
+      "width": 600,
+      "height": 300
+    },
+    {
+      "id": "database-group",
+      "label": "Database",
+      "position": { "x": 650, "y": 150 },
+      "width": 200,
+      "height": 100
+    }
+  ],
+  "metadata": {
+    "title": "Hospital Web Application Architecture"
+  }
+}"""
 
       print("Content : ", content)
     #   logging.info(f"Responce : {response}")
