@@ -1,7 +1,15 @@
+/*
+ * diagramToReactFlow contains utilities to bridge the Diagram document model and React Flow elements.
+ *
+ * It provides pure mapping from Diagram model to React Flow elements, and separate one-time
+ * Dagre-based layout calculations for initial generation and manual re-layout triggers.
+ */
+
 import type { Edge, Node } from '@xyflow/react'
 import type { Diagram } from '../types/diagram'
 import { applyDagreLayout } from './applyDagreLayout'
 import { routeEdges } from '../layout/edgeRouting'
+
 
 // Type definition for node labels passed to React Flow custom nodes.
 export type DiagramNodeData = {

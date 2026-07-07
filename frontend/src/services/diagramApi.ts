@@ -1,8 +1,13 @@
+/*
+ * diagramApi is the network communication client.
+ *
+ * It configures axios to call backend endpoints and encapsulates diagram generation queries,
+ * returning raw Diagram document schemas to the application flow.
+ */
+
 import axios from 'axios'
 import type { Diagram } from '../types/diagram'
 
-// API client configuration and network requests.
-// Handles API calls to fetch new architecture diagram document models from the backend.
 type GenerateDiagramResponse = {
   diagram: Diagram
 }

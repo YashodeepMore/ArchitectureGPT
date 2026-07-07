@@ -1,3 +1,11 @@
+/*
+ * DiagramCanvas connects our Diagram document to React Flow.
+ *
+ * The DiagramStore owns the application's document and selection state.
+ * This component converts that document into React Flow elements,
+ * merges active selection overlays, and forwards user interactions back to the store.
+ */
+
 import {
   Background,
   Controls,
@@ -7,7 +15,7 @@ import {
   type NodeChange,
   type EdgeChange,
 } from '@xyflow/react'
-import { useState, useMemo, useCallback } from 'react'
+import { useMemo, useCallback } from 'react'
 import '@xyflow/react/dist/style.css'
 import { useDiagramStore } from '../../store/diagramStore'
 import { diagramToReactFlow } from '../../utils/diagramToReactFlow'
@@ -20,10 +28,15 @@ export function DiagramCanvas() {
   const diagram = useDiagramStore((state) => state.diagram)
   const updateNodePosition = useDiagramStore((state) => state.updateNodePosition)
   const updateGroupPosition = useDiagramStore((state) => state.updateGroupPosition)
+  const updateNodeLabel = useDiagramStore((state) => state.updateNodeLabel)
+  const removeNode = useDiagramStore((state) => state.removeNode)
 
-  // Track selection state locally inside this component so we don't pollute the Diagram document.
-  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
-  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([])
+  // Retrieve and update canvas selection state from the global store
+  const selectedNodeIds = useDiagramStore((state) => state.selectedNodeIds)
+  const selectedEdgeIds = useDiagramStore((state) => state.selectedEdgeIds)
+  const setSelectedNodeIds = useDiagramStore((state) => state.setSelectedNodeIds)
+  const setSelectedEdgeIds = useDiagramStore((state) => state.setSelectedEdgeIds)
+
 
   const edgeTypes = {
     custom: CustomEdge,
@@ -68,33 +81,53 @@ export function DiagramCanvas() {
             updateNodePosition(change.id, change.position)
           }
         } else if (change.type === 'select') {
-          // Track selected nodes locally in the renderer component
-          setSelectedNodeIds((prev) =>
+          // Track selected nodes in the global store to coordinate editor controls
+          setSelectedNodeIds(
             change.selected
-              ? [...prev, change.id]
-              : prev.filter((id) => id !== change.id)
+              ? [...selectedNodeIds, change.id]
+              : selectedNodeIds.filter((id) => id !== change.id)
           )
+        } else if (change.type === 'remove') {
+          // Sync node removal back into the Diagram document (also handles connected edges in the store)
+          removeNode(change.id)
         }
       })
     },
-    [diagram, updateNodePosition, updateGroupPosition]
+    [diagram, updateNodePosition, updateGroupPosition, removeNode, selectedNodeIds, setSelectedNodeIds]
   )
+
 
   // Intercepts edge selection adjustments from React Flow
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
       changes.forEach((change) => {
         if (change.type === 'select') {
-          // Track selected edges locally in the renderer component
-          setSelectedEdgeIds((prev) =>
+          // Track selected edges in the global store to coordinate editor controls
+          setSelectedEdgeIds(
             change.selected
-              ? [...prev, change.id]
-              : prev.filter((id) => id !== change.id)
+              ? [...selectedEdgeIds, change.id]
+              : selectedEdgeIds.filter((id) => id !== change.id)
           )
         }
       })
     },
-    []
+    [selectedEdgeIds, setSelectedEdgeIds]
+  )
+
+
+  // Double-clicking a node spawns a prompt to edit its name directly inside the Diagram document
+  const handleNodeDoubleClick = useCallback(
+    (_event: React.MouseEvent, node: Node<DiagramNodeData>) => {
+      // Avoid renaming group containers (only rename standard nodes)
+      if (node.type === 'group') return
+
+      const currentLabel = node.data.label
+      const nextLabel = window.prompt('Rename Node', currentLabel)
+      if (nextLabel !== null && nextLabel.trim() !== '') {
+        updateNodeLabel(node.id, nextLabel.trim())
+      }
+    },
+    [updateNodeLabel]
   )
 
   return (
@@ -106,6 +139,7 @@ export function DiagramCanvas() {
         edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
+        onNodeDoubleClick={handleNodeDoubleClick}
         fitView
       >
         <Background />
