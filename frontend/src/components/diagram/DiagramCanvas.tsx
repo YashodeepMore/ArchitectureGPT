@@ -4,11 +4,10 @@ import {
   type Edge,
   type Node,
   ReactFlow,
-  useEdgesState,
-  useNodesState,
   type NodeChange,
+  type EdgeChange,
 } from '@xyflow/react'
-import { useEffect, useCallback } from 'react'
+import { useState, useMemo, useCallback } from 'react'
 import '@xyflow/react/dist/style.css'
 import { useDiagramStore } from '../../store/diagramStore'
 import { diagramToReactFlow } from '../../utils/diagramToReactFlow'
@@ -22,72 +21,80 @@ export function DiagramCanvas() {
   const updateNodePosition = useDiagramStore((state) => state.updateNodePosition)
   const updateGroupPosition = useDiagramStore((state) => state.updateGroupPosition)
 
-  // React Flow local state tracks transient renderer states (like selection/dragging highlights).
-  const [nodes, setNodes, onNodesChange] = useNodesState<Node<DiagramNodeData>>([])
-  const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([])
+  // Track selection state locally inside this component so we don't pollute the Diagram document.
+  const [selectedNodeIds, setSelectedNodeIds] = useState<string[]>([])
+  const [selectedEdgeIds, setSelectedEdgeIds] = useState<string[]>([])
 
   const edgeTypes = {
     custom: CustomEdge,
   }
 
-  // Subscribes to the Diagram store. Re-maps diagram data to React Flow nodes/edges on any change.
-  useEffect(() => {
+  // Derive the React Flow nodes and edges dynamically from the Diagram document.
+  // Merges transient selection properties on every re-render.
+  const { nodes, edges } = useMemo<{ nodes: Node<DiagramNodeData>[]; edges: Edge[] }>(() => {
     if (!diagram) {
-      setNodes([])
-      setEdges([])
-      return
+      return { nodes: [], edges: [] }
     }
+
 
     const flow = diagramToReactFlow(diagram)
 
-    // Merge new flow nodes with existing local nodes to preserve transient properties like 'selected' or 'dragging'
-    setNodes((prevNodes) =>
-      flow.nodes.map((newNode) => {
-        const prevNode = prevNodes.find((n) => n.id === newNode.id)
-        if (prevNode) {
-          return {
-            ...newNode,
-            selected: prevNode.selected,
-            dragging: prevNode.dragging,
-          }
-        }
-        return newNode
-      })
-    )
+    const mergedNodes = flow.nodes.map((node) => ({
+      ...node,
+      selected: selectedNodeIds.includes(node.id),
+    }))
 
-    setEdges((prevEdges) =>
-      flow.edges.map((newEdge) => {
-        const prevEdge = prevEdges.find((e) => e.id === newEdge.id)
-        if (prevEdge) {
-          return {
-            ...newEdge,
-            selected: prevEdge.selected,
-          }
-        }
-        return newEdge
-      })
-    )
-  }, [diagram, setEdges, setNodes])
+    const mergedEdges = flow.edges.map((edge) => ({
+      ...edge,
+      selected: selectedEdgeIds.includes(edge.id),
+    }))
 
-  // Intercepts node adjustments from React Flow and updates the source Diagram document.
+    return {
+      nodes: mergedNodes,
+      edges: mergedEdges,
+    }
+  }, [diagram, selectedNodeIds, selectedEdgeIds])
+
+  // Intercepts adjustments from React Flow and updates the source Diagram document.
   const handleNodesChange = useCallback(
     (changes: NodeChange<Node<DiagramNodeData>>[]) => {
-      // Update local state first to ensure fluid dragging in the renderer
-      onNodesChange(changes)
-
-      // Persist node movement back into the Diagram document
       changes.forEach((change) => {
         if (change.type === 'position' && change.position) {
+          // Persist the new node position into the Diagram document
           const isGroup = diagram?.groups.some((g) => g.id === change.id)
           if (isGroup) {
             updateGroupPosition(change.id, change.position)
           } else {
             updateNodePosition(change.id, change.position)
           }
+        } else if (change.type === 'select') {
+          // Track selected nodes locally in the renderer component
+          setSelectedNodeIds((prev) =>
+            change.selected
+              ? [...prev, change.id]
+              : prev.filter((id) => id !== change.id)
+          )
         }
       })
     },
-    [onNodesChange, diagram, updateNodePosition, updateGroupPosition]
+    [diagram, updateNodePosition, updateGroupPosition]
+  )
+
+  // Intercepts edge selection adjustments from React Flow
+  const handleEdgesChange = useCallback(
+    (changes: EdgeChange[]) => {
+      changes.forEach((change) => {
+        if (change.type === 'select') {
+          // Track selected edges locally in the renderer component
+          setSelectedEdgeIds((prev) =>
+            change.selected
+              ? [...prev, change.id]
+              : prev.filter((id) => id !== change.id)
+          )
+        }
+      })
+    },
+    []
   )
 
   return (
@@ -98,7 +105,7 @@ export function DiagramCanvas() {
         nodeTypes={nodeTypes}
         edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
-        onEdgesChange={onEdgesChange}
+        onEdgesChange={handleEdgesChange}
         fitView
       >
         <Background />
@@ -107,5 +114,6 @@ export function DiagramCanvas() {
     </div>
   )
 }
+
 
 
