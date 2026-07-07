@@ -19,6 +19,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
   const selectedNodeIds = useDiagramStore((state) => state.selectedNodeIds)
   const selectedEdgeIds = useDiagramStore((state) => state.selectedEdgeIds)
   const deleteSelected = useDiagramStore((state) => state.deleteSelected)
+  const addNode = useDiagramStore((state) => state.addNode)
 
   // Internal active tools state
   const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select')
@@ -26,7 +27,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
   const hasSelection = selectedNodeIds.length > 0 || selectedEdgeIds.length > 0
 
   const handleAddNode = () => {
-    alert('Add Node feature is coming soon!')
+    addNode()
   }
 
   const handleAddEdge = () => {

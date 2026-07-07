@@ -26,9 +26,11 @@ export function Toolbar({
   onReset,
 }: ToolbarProps) {
   const autoLayout = useDiagramStore((state) => state.autoLayout)
+  const diagram = useDiagramStore((state) => state.diagram)
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
+
 
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
@@ -57,7 +59,32 @@ export function Toolbar({
     alert('Redo feature is coming soon!')
   }
 
+  // Serializes the current Diagram document and triggers a browser download.
+  const handleExportJSON = () => {
+    if (!diagram) return
+    setIsMenuOpen(false)
+
+    try {
+      const jsonString = JSON.stringify(diagram, null, 2)
+      const blob = new Blob([jsonString], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `${diagram.id || 'architecture'}.json`
+      document.body.appendChild(link)
+      link.click()
+
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('Failed to export JSON:', err)
+      alert('Failed to export JSON')
+    }
+  }
+
   return (
+
     <header className="editor-header">
       {/* Left side: Logo & Title */}
       <div className="editor-header-logo">
@@ -182,13 +209,11 @@ export function Toolbar({
                 type="button"
                 className="toolbar-dropdown-item"
                 role="menuitem"
-                onClick={() => {
-                  setIsMenuOpen(false)
-                  alert('Export JSON is coming soon!')
-                }}
+                onClick={handleExportJSON}
               >
                 Export JSON
               </button>
+
             </div>
           ) : null}
         </div>

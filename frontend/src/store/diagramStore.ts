@@ -22,6 +22,8 @@ type DiagramStore = {
   resetDiagram: () => void
   setSelectedNodeIds: (ids: string[]) => void
   setSelectedEdgeIds: (ids: string[]) => void
+  addNode: () => void
+
   
   // Persists node movement back into the Diagram document.
   updateNodePosition: (id: string, position: Position) => void
@@ -44,8 +46,29 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
   
   setDiagram: (diagram) => set({ diagram }),
   resetDiagram: () => set({ diagram: null, selectedNodeIds: [], selectedEdgeIds: [] }),
+  // Retrieve and update canvas selection state from the global store
   setSelectedNodeIds: (selectedNodeIds) => set({ selectedNodeIds }),
   setSelectedEdgeIds: (selectedEdgeIds) => set({ selectedEdgeIds }),
+  
+  // Appends a new generic node to the active diagram document model.
+  addNode: () =>
+    set((state) => {
+      if (!state.diagram) return {}
+      const newId = `node_${Date.now()}`
+      const newNode = {
+        id: newId,
+        type: 'service',
+        label: 'New Node',
+        position: { x: 100, y: 100 },
+        parent: null,
+      }
+      return {
+        diagram: {
+          ...state.diagram,
+          nodes: [...state.diagram.nodes, newNode],
+        },
+      }
+    }),
   
   // Directly updates node coordinates in the source diagram document.
   updateNodePosition: (id, position) =>
@@ -90,14 +113,39 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     }),
 
   // Removes node (or group) and cleans up connected edges in the source diagram document.
+  // Note: If a group container is removed, child nodes are adjusted to be absolute-positioned 
+  // on the canvas and their parent field is cleared, preventing canvas crashes.
   removeNode: (id) =>
     set((state) => {
       if (!state.diagram) return {}
+      
+      const groupToRemove = state.diagram.groups.find((g) => g.id === id)
+      if (groupToRemove) {
+        return {
+          diagram: {
+            ...state.diagram,
+            groups: state.diagram.groups.filter((g) => g.id !== id),
+            nodes: state.diagram.nodes.map((node) => {
+              if (node.parent === id) {
+                return {
+                  ...node,
+                  parent: null,
+                  position: {
+                    x: node.position.x + groupToRemove.position.x,
+                    y: node.position.y + groupToRemove.position.y,
+                  },
+                }
+              }
+              return node
+            }),
+          },
+        }
+      }
+
       return {
         diagram: {
           ...state.diagram,
           nodes: state.diagram.nodes.filter((node) => node.id !== id),
-          groups: state.diagram.groups.filter((group) => group.id !== id),
           edges: state.diagram.edges.filter(
             (edge) => edge.source !== id && edge.target !== id
           ),
@@ -106,28 +154,56 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     }),
 
   // Mutates the document model by removing all selected nodes, groups, and edges.
+  // Note: For any groups being deleted, children nodes are automatically unnested, 
+  // re-anchored absolute-positioned on the canvas, and their parent field is cleared.
   deleteSelected: () =>
     set((state) => {
       if (!state.diagram) return {}
       const nodeIds = state.selectedNodeIds
       const edgeIds = state.selectedEdgeIds
 
+      const groupsToDeleting = state.diagram.groups.filter((g) => nodeIds.includes(g.id))
+      const groupIds = groupsToDeleting.map((g) => g.id)
+
+      const nextGroups = state.diagram.groups.filter((g) => !nodeIds.includes(g.id))
+
+      const nextNodes = state.diagram.nodes.map((node) => {
+        if (nodeIds.includes(node.id)) return node
+
+        if (node.parent && groupIds.includes(node.parent)) {
+          const parentGroup = groupsToDeleting.find((g) => g.id === node.parent)
+          const offset = parentGroup ? parentGroup.position : { x: 0, y: 0 }
+          return {
+            ...node,
+            parent: null,
+            position: {
+              x: node.position.x + offset.x,
+              y: node.position.y + offset.y,
+            },
+          }
+        }
+        return node
+      }).filter((node) => !nodeIds.includes(node.id))
+
+      const nextEdges = state.diagram.edges.filter((edge) => {
+        const sourceDeleted = nodeIds.includes(edge.source)
+        const targetDeleted = nodeIds.includes(edge.target)
+        const edgeDeleted = edgeIds.includes(edge.id)
+        return !sourceDeleted && !targetDeleted && !edgeDeleted
+      })
+
       return {
         selectedNodeIds: [],
         selectedEdgeIds: [],
         diagram: {
           ...state.diagram,
-          nodes: state.diagram.nodes.filter((node) => !nodeIds.includes(node.id)),
-          groups: state.diagram.groups.filter((group) => !nodeIds.includes(group.id)),
-          edges: state.diagram.edges.filter(
-            (edge) =>
-              !nodeIds.includes(edge.source) &&
-              !nodeIds.includes(edge.target) &&
-              !edgeIds.includes(edge.id)
-          ),
+          nodes: nextNodes,
+          groups: nextGroups,
+          edges: nextEdges,
         },
       }
     }),
+
 
   // Executes layout pass and saves computed positions back to the active diagram document.
   autoLayout: () =>
