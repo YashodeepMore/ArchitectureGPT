@@ -29,20 +29,15 @@ export function DiagramCanvas() {
   const diagram = useDiagramStore((state) => state.diagram)
   const updateNodePosition = useDiagramStore((state) => state.updateNodePosition)
   const updateGroupPosition = useDiagramStore((state) => state.updateGroupPosition)
-  const updateNodeLabel = useDiagramStore((state) => state.updateNodeLabel)
   const removeNode = useDiagramStore((state) => state.removeNode)
-  const updateGroupLabel = useDiagramStore((state) => state.updateGroupLabel)
   const addEdge = useDiagramStore((state) => state.addEdge)
   const updateEdge = useDiagramStore((state) => state.updateEdge)
-  const updateEdgeLabel = useDiagramStore((state) => state.updateEdgeLabel)
 
   // Retrieve and update canvas selection state from the global store
   const selectedNodeIds = useDiagramStore((state) => state.selectedNodeIds)
   const selectedEdgeIds = useDiagramStore((state) => state.selectedEdgeIds)
   const setSelectedNodeIds = useDiagramStore((state) => state.setSelectedNodeIds)
   const setSelectedEdgeIds = useDiagramStore((state) => state.setSelectedEdgeIds)
-
-
 
   const edgeTypes = {
     custom: CustomEdge,
@@ -54,7 +49,6 @@ export function DiagramCanvas() {
     if (!diagram) {
       return { nodes: [], edges: [] }
     }
-
 
     const flow = diagramToReactFlow(diagram)
 
@@ -102,7 +96,6 @@ export function DiagramCanvas() {
     [diagram, updateNodePosition, updateGroupPosition, removeNode, selectedNodeIds, setSelectedNodeIds]
   )
 
-
   // Intercepts edge selection adjustments from React Flow
   const handleEdgesChange = useCallback(
     (changes: EdgeChange[]) => {
@@ -118,26 +111,6 @@ export function DiagramCanvas() {
       })
     },
     [selectedEdgeIds, setSelectedEdgeIds]
-  )
-
-
-  // Double-clicking a node/group spawns a prompt to edit its name directly inside the Diagram document
-  const handleNodeDoubleClick = useCallback(
-    (_event: React.MouseEvent, node: Node<DiagramNodeData>) => {
-      const currentLabel = node.data.label
-      if (node.type === 'group') {
-        const nextLabel = window.prompt('Rename Container', currentLabel)
-        if (nextLabel !== null && nextLabel.trim() !== '') {
-          updateGroupLabel(node.id, nextLabel.trim())
-        }
-      } else {
-        const nextLabel = window.prompt('Rename Node', currentLabel)
-        if (nextLabel !== null && nextLabel.trim() !== '') {
-          updateNodeLabel(node.id, nextLabel.trim())
-        }
-      }
-    },
-    [updateNodeLabel, updateGroupLabel]
   )
 
   // Triggers when a new connection is dragged and established between two nodes.
@@ -163,18 +136,6 @@ export function DiagramCanvas() {
     [updateEdge]
   )
 
-  // Double-clicking an edge spawns a prompt to edit its name label directly inside the Diagram document.
-  const handleEdgeDoubleClick = useCallback(
-    (_event: React.MouseEvent, edge: Edge) => {
-      const currentLabel = (edge.label as string) || ''
-      const nextLabel = window.prompt('Rename Edge (Label)', currentLabel)
-      if (nextLabel !== null) {
-        updateEdgeLabel(edge.id, nextLabel.trim())
-      }
-    },
-    [updateEdgeLabel]
-  )
-
   return (
     <div className="diagram-canvas">
       <ReactFlow
@@ -184,10 +145,8 @@ export function DiagramCanvas() {
         edgeTypes={edgeTypes}
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
-        onNodeDoubleClick={handleNodeDoubleClick}
         onConnect={handleConnect}
         onReconnect={handleReconnect}
-        onEdgeDoubleClick={handleEdgeDoubleClick}
         fitView
       >
         <Background />
@@ -196,6 +155,3 @@ export function DiagramCanvas() {
     </div>
   )
 }
-
-
-

@@ -18,10 +18,15 @@ type DiagramStore = {
   selectedNodeIds: string[]
   selectedEdgeIds: string[]
   
+  // Track whether the current document has unsaved modifications.
+  isDirty: boolean
+
   setDiagram: (diagram: Diagram) => void
   resetDiagram: () => void
   setSelectedNodeIds: (ids: string[]) => void
   setSelectedEdgeIds: (ids: string[]) => void
+  setIsDirty: (dirty: boolean) => void
+  selectAll: () => void
   addNode: () => void
 
   
@@ -31,6 +36,8 @@ type DiagramStore = {
   updateGroupPosition: (id: string, position: Position) => void
   // Updates the name/label of a node in the Diagram document.
   updateNodeLabel: (id: string, label: string) => void
+  // Updates the visual type classification of a node in the Diagram document.
+  updateNodeType: (id: string, type: string) => void
   // Removes a node and all of its connected edges from the Diagram document.
   removeNode: (id: string) => void
   // Deletes all currently selected nodes and edges from the active diagram document.
@@ -59,12 +66,25 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
   diagram: null,
   selectedNodeIds: [],
   selectedEdgeIds: [],
+  isDirty: false,
   
-  setDiagram: (diagram) => set({ diagram }),
-  resetDiagram: () => set({ diagram: null, selectedNodeIds: [], selectedEdgeIds: [] }),
-  // Retrieve and update canvas selection state from the global store
+  setDiagram: (diagram) => set({ diagram, isDirty: false }),
+  resetDiagram: () => set({ diagram: null, selectedNodeIds: [], selectedEdgeIds: [], isDirty: false }),
   setSelectedNodeIds: (selectedNodeIds) => set({ selectedNodeIds }),
   setSelectedEdgeIds: (selectedEdgeIds) => set({ selectedEdgeIds }),
+  setIsDirty: (isDirty) => set({ isDirty }),
+  selectAll: () =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        selectedNodeIds: [
+          ...state.diagram.nodes.map((n) => n.id),
+          ...state.diagram.groups.map((g) => g.id),
+        ],
+        selectedEdgeIds: state.diagram.edges.map((e) => e.id),
+      }
+    }),
+
   
   // Appends a new generic node to the active diagram document model.
   addNode: () =>
@@ -79,6 +99,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
         parent: null,
       }
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           nodes: [...state.diagram.nodes, newNode],
@@ -91,6 +112,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           nodes: state.diagram.nodes.map((node) =>
@@ -105,6 +127,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           groups: state.diagram.groups.map((group) =>
@@ -119,10 +142,26 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           nodes: state.diagram.nodes.map((node) =>
             node.id === id ? { ...node, label } : node
+          ),
+        },
+      }
+    }),
+
+  // Directly updates a node's type in the source diagram document.
+  updateNodeType: (id, type) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        isDirty: true,
+        diagram: {
+          ...state.diagram,
+          nodes: state.diagram.nodes.map((node) =>
+            node.id === id ? { ...node, type } : node
           ),
         },
       }
@@ -138,6 +177,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       const groupToRemove = state.diagram.groups.find((g) => g.id === id)
       if (groupToRemove) {
         return {
+          isDirty: true,
           diagram: {
             ...state.diagram,
             groups: state.diagram.groups.filter((g) => g.id !== id),
@@ -159,6 +199,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       }
 
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           nodes: state.diagram.nodes.filter((node) => node.id !== id),
@@ -209,6 +250,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       })
 
       return {
+        isDirty: true,
         selectedNodeIds: [],
         selectedEdgeIds: [],
         diagram: {
@@ -233,6 +275,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
         height: 220,
       }
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           groups: [...state.diagram.groups, newGroup],
@@ -245,6 +288,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           groups: state.diagram.groups.map((group) =>
@@ -259,6 +303,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           groups: state.diagram.groups.map((group) =>
@@ -286,6 +331,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
         label: '',
       }
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           edges: [...state.diagram.edges, newEdge],
@@ -308,6 +354,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       if (duplicate) return {}
 
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           edges: state.diagram.edges.map((edge) =>
@@ -322,6 +369,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           edges: state.diagram.edges.map((edge) =>
@@ -336,6 +384,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: {
           ...state.diagram,
           edges: state.diagram.edges.filter((edge) => edge.id !== id),
@@ -348,6 +397,7 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
     set((state) => {
       if (!state.diagram) return {}
       return {
+        isDirty: true,
         diagram: layoutDiagram(state.diagram),
       }
     }),

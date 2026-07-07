@@ -21,6 +21,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
   const deleteSelected = useDiagramStore((state) => state.deleteSelected)
   const addNode = useDiagramStore((state) => state.addNode)
   const addGroup = useDiagramStore((state) => state.addGroup)
+  const addEdge = useDiagramStore((state) => state.addEdge)
 
   // Internal active tools state
   const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select')
@@ -32,7 +33,11 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
   }
 
   const handleAddEdge = () => {
-    alert('Add Edge feature is coming soon!')
+    if (selectedNodeIds.length === 2) {
+      addEdge(selectedNodeIds[0], selectedNodeIds[1])
+    } else {
+      alert('Select exactly two nodes in the diagram, then click this button to connect them, or drag from one node handle directly to another.')
+    }
   }
 
   const handleGroup = () => {

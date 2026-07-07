@@ -15,6 +15,8 @@ type ToolbarProps = {
   onPromptChange: (val: string) => void
   onGenerate: () => void
   onReset: () => void
+  onSave: () => void
+  onImportClick: () => void
 }
 
 export function Toolbar({
@@ -24,9 +26,12 @@ export function Toolbar({
   onPromptChange,
   onGenerate,
   onReset,
+  onSave,
+  onImportClick,
 }: ToolbarProps) {
   const autoLayout = useDiagramStore((state) => state.autoLayout)
   const diagram = useDiagramStore((state) => state.diagram)
+  const isDirty = useDiagramStore((state) => state.isDirty)
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -44,7 +49,7 @@ export function Toolbar({
   }, [])
 
   const handleSave = () => {
-    alert('Save feature is coming soon!')
+    onSave()
   }
 
   const handleThemeChange = () => {
@@ -89,7 +94,11 @@ export function Toolbar({
       {/* Left side: Logo & Title */}
       <div className="editor-header-logo">
         <h1>ArchitectureGPT</h1>
-        <span>Beta</span>
+        {hasDiagram && (
+          <span className={`dirty-indicator ${isDirty ? 'dirty' : 'clean'}`}>
+            {isDirty ? '● Unsaved' : '✓ Saved'}
+          </span>
+        )}
       </div>
 
       {/* Center: Compact prompt input and generation button */}
@@ -143,6 +152,15 @@ export function Toolbar({
           title="Auto arrange diagram components"
         >
           Auto Layout
+        </button>
+
+        <button
+          type="button"
+          className="toolbar-secondary"
+          onClick={onImportClick}
+          title="Import diagram JSON file"
+        >
+          Import
         </button>
 
         <button
