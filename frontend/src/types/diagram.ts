@@ -15,7 +15,9 @@ export type DiagramEdge = {
   id: string
   source: string
   target: string
+  label?: string
 }
+
 
 export type DiagramGroup = {
   id: string

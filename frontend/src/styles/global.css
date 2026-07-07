@@ -704,3 +704,11 @@ button:disabled {
   height: 100%;
 }
 
+/* Active Selected state on group containers */
+.react-flow__node.selected .diagram-group-label {
+  border-color: #3b82f6 !important;
+  border-width: 2.5px !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.25) !important;
+}
+
+

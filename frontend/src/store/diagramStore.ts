@@ -37,7 +37,23 @@ type DiagramStore = {
   deleteSelected: () => void
   // Triggers the layout engine to calculate and update layout positions for the current diagram document.
   autoLayout: () => void
+  // Appends a new empty group container to the active diagram document.
+  addGroup: () => void
+  // Updates the width and height of a specific group in the Diagram document.
+  updateGroupSize: (id: string, width: number, height: number) => void
+  // Updates the name/label of a specific group in the Diagram document.
+  updateGroupLabel: (id: string, label: string) => void
+  // Appends a new edge connection to the active diagram document.
+  addEdge: (source: string, target: string) => void
+  // Reconnects an existing edge to another source/target node in the active diagram document.
+  updateEdge: (id: string, connection: { source: string; target: string }) => void
+  // Updates the name/label of a specific edge in the Diagram document.
+  updateEdgeLabel: (id: string, label: string) => void
+  // Removes a specific edge connection by its ID in the Diagram document.
+  removeEdge: (id: string) => void
 }
+
+
 
 export const useDiagramStore = create<DiagramStore>((set) => ({
   diagram: null,
@@ -204,6 +220,128 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       }
     }),
 
+  // Appends a new empty group container to the active diagram document model.
+  addGroup: () =>
+    set((state) => {
+      if (!state.diagram) return {}
+      const newId = `group_${Date.now()}`
+      const newGroup = {
+        id: newId,
+        label: 'New Container',
+        position: { x: 150, y: 150 },
+        width: 320,
+        height: 220,
+      }
+      return {
+        diagram: {
+          ...state.diagram,
+          groups: [...state.diagram.groups, newGroup],
+        },
+      }
+    }),
+
+  // Directly updates group width and height dimensions in the source diagram document.
+  updateGroupSize: (id, width, height) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        diagram: {
+          ...state.diagram,
+          groups: state.diagram.groups.map((group) =>
+            group.id === id ? { ...group, width, height } : group
+          ),
+        },
+      }
+    }),
+
+  // Directly updates group name/label in the source diagram document.
+  updateGroupLabel: (id, label) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        diagram: {
+          ...state.diagram,
+          groups: state.diagram.groups.map((group) =>
+            group.id === id ? { ...group, label } : group
+          ),
+        },
+      }
+    }),
+
+  // Appends a new unique connection edge to the active diagram document model.
+  addEdge: (source, target) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      
+      // Validation: Prevent duplicate identical connection directions
+      const exists = state.diagram.edges.some(
+        (edge) => edge.source === source && edge.target === target
+      )
+      if (exists) return {}
+
+      const newEdge = {
+        id: `edge_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`,
+        source,
+        target,
+        label: '',
+      }
+      return {
+        diagram: {
+          ...state.diagram,
+          edges: [...state.diagram.edges, newEdge],
+        },
+      }
+    }),
+
+  // Reconnects an existing edge to another source/target node in the active diagram document.
+  updateEdge: (id, connection) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      
+      // Validation: Prevent duplicate identical edges
+      const duplicate = state.diagram.edges.some(
+        (edge) =>
+          edge.id !== id &&
+          edge.source === connection.source &&
+          edge.target === connection.target
+      )
+      if (duplicate) return {}
+
+      return {
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id ? { ...edge, ...connection } : edge
+          ),
+        },
+      }
+    }),
+
+  // Directly updates edge name/label in the source diagram document.
+  updateEdgeLabel: (id, label) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id ? { ...edge, label } : edge
+          ),
+        },
+      }
+    }),
+
+  // Removes a specific edge connection by its ID in the Diagram document.
+  removeEdge: (id) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.filter((edge) => edge.id !== id),
+        },
+      }
+    }),
 
   // Executes layout pass and saves computed positions back to the active diagram document.
   autoLayout: () =>

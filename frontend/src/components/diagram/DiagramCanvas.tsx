@@ -14,6 +14,7 @@ import {
   ReactFlow,
   type NodeChange,
   type EdgeChange,
+  type Connection,
 } from '@xyflow/react'
 import { useMemo, useCallback } from 'react'
 import '@xyflow/react/dist/style.css'
@@ -30,12 +31,17 @@ export function DiagramCanvas() {
   const updateGroupPosition = useDiagramStore((state) => state.updateGroupPosition)
   const updateNodeLabel = useDiagramStore((state) => state.updateNodeLabel)
   const removeNode = useDiagramStore((state) => state.removeNode)
+  const updateGroupLabel = useDiagramStore((state) => state.updateGroupLabel)
+  const addEdge = useDiagramStore((state) => state.addEdge)
+  const updateEdge = useDiagramStore((state) => state.updateEdge)
+  const updateEdgeLabel = useDiagramStore((state) => state.updateEdgeLabel)
 
   // Retrieve and update canvas selection state from the global store
   const selectedNodeIds = useDiagramStore((state) => state.selectedNodeIds)
   const selectedEdgeIds = useDiagramStore((state) => state.selectedEdgeIds)
   const setSelectedNodeIds = useDiagramStore((state) => state.setSelectedNodeIds)
   const setSelectedEdgeIds = useDiagramStore((state) => state.setSelectedEdgeIds)
+
 
 
   const edgeTypes = {
@@ -115,19 +121,58 @@ export function DiagramCanvas() {
   )
 
 
-  // Double-clicking a node spawns a prompt to edit its name directly inside the Diagram document
+  // Double-clicking a node/group spawns a prompt to edit its name directly inside the Diagram document
   const handleNodeDoubleClick = useCallback(
     (_event: React.MouseEvent, node: Node<DiagramNodeData>) => {
-      // Avoid renaming group containers (only rename standard nodes)
-      if (node.type === 'group') return
-
       const currentLabel = node.data.label
-      const nextLabel = window.prompt('Rename Node', currentLabel)
-      if (nextLabel !== null && nextLabel.trim() !== '') {
-        updateNodeLabel(node.id, nextLabel.trim())
+      if (node.type === 'group') {
+        const nextLabel = window.prompt('Rename Container', currentLabel)
+        if (nextLabel !== null && nextLabel.trim() !== '') {
+          updateGroupLabel(node.id, nextLabel.trim())
+        }
+      } else {
+        const nextLabel = window.prompt('Rename Node', currentLabel)
+        if (nextLabel !== null && nextLabel.trim() !== '') {
+          updateNodeLabel(node.id, nextLabel.trim())
+        }
       }
     },
-    [updateNodeLabel]
+    [updateNodeLabel, updateGroupLabel]
+  )
+
+  // Triggers when a new connection is dragged and established between two nodes.
+  const handleConnect = useCallback(
+    (connection: Connection) => {
+      if (connection.source && connection.target && connection.source !== connection.target) {
+        addEdge(connection.source, connection.target)
+      }
+    },
+    [addEdge]
+  )
+
+  // Triggers when an existing connection line is dragged and reconnected to another node.
+  const handleReconnect = useCallback(
+    (oldEdge: Edge, newConnection: Connection) => {
+      if (newConnection.source && newConnection.target && newConnection.source !== newConnection.target) {
+        updateEdge(oldEdge.id, {
+          source: newConnection.source,
+          target: newConnection.target,
+        })
+      }
+    },
+    [updateEdge]
+  )
+
+  // Double-clicking an edge spawns a prompt to edit its name label directly inside the Diagram document.
+  const handleEdgeDoubleClick = useCallback(
+    (_event: React.MouseEvent, edge: Edge) => {
+      const currentLabel = (edge.label as string) || ''
+      const nextLabel = window.prompt('Rename Edge (Label)', currentLabel)
+      if (nextLabel !== null) {
+        updateEdgeLabel(edge.id, nextLabel.trim())
+      }
+    },
+    [updateEdgeLabel]
   )
 
   return (
@@ -140,6 +185,9 @@ export function DiagramCanvas() {
         onNodesChange={handleNodesChange}
         onEdgesChange={handleEdgesChange}
         onNodeDoubleClick={handleNodeDoubleClick}
+        onConnect={handleConnect}
+        onReconnect={handleReconnect}
+        onEdgeDoubleClick={handleEdgeDoubleClick}
         fitView
       >
         <Background />

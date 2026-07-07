@@ -20,6 +20,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
   const selectedEdgeIds = useDiagramStore((state) => state.selectedEdgeIds)
   const deleteSelected = useDiagramStore((state) => state.deleteSelected)
   const addNode = useDiagramStore((state) => state.addNode)
+  const addGroup = useDiagramStore((state) => state.addGroup)
 
   // Internal active tools state
   const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select')
@@ -35,7 +36,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
   }
 
   const handleGroup = () => {
-    alert('Grouping feature is coming soon!')
+    addGroup()
   }
 
   return (
@@ -143,7 +144,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
           className="sidebar-tool-btn"
           disabled={!hasDiagram}
           onClick={handleGroup}
-          title="Create a new Group"
+          title="Create a new Container"
         >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect>
@@ -152,7 +153,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
             <line x1="3" y1="9" x2="21" y2="9"></line>
             <line x1="3" y1="15" x2="21" y2="15"></line>
           </svg>
-          <span>Group</span>
+          <span>Container</span>
         </button>
       </div>
     </aside>

@@ -45,6 +45,7 @@ export function diagramToReactFlow(diagram: Diagram) {
     id: edge.id,
     source: edge.source,
     target: edge.target,
+    label: edge.label,
   }))
 
   const rawNodes = [...groupNodes, ...diagramNodes]
