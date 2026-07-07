@@ -15,6 +15,7 @@ import {
   type NodeChange,
   type EdgeChange,
   type Connection,
+  useReactFlow,
 } from '@xyflow/react'
 import { useMemo, useCallback } from 'react'
 import '@xyflow/react/dist/style.css'
@@ -27,12 +28,14 @@ import { ZoomControls } from './ZoomControls'
 
 // This component connects the document model (DiagramStore) to the renderer (React Flow).
 export function DiagramCanvas({ activeTool }: { activeTool: 'select' | 'pan' }) {
+  const { screenToFlowPosition } = useReactFlow()
   const diagram = useDiagramStore((state) => state.diagram)
   const updateNodePosition = useDiagramStore((state) => state.updateNodePosition)
   const updateGroupPosition = useDiagramStore((state) => state.updateGroupPosition)
   const removeNode = useDiagramStore((state) => state.removeNode)
   const addEdge = useDiagramStore((state) => state.addEdge)
   const updateEdge = useDiagramStore((state) => state.updateEdge)
+  const addWaypoint = useDiagramStore((state) => state.addWaypoint)
 
   // Retrieve and update canvas selection state from the global store
   const selectedNodeIds = useDiagramStore((state) => state.selectedNodeIds)
@@ -148,6 +151,11 @@ export function DiagramCanvas({ activeTool }: { activeTool: 'select' | 'pan' }) 
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onReconnect={handleReconnect}
+        onEdgeDoubleClick={(event, edge) => {
+          event.stopPropagation()
+          const canvasPos = screenToFlowPosition({ x: event.clientX, y: event.clientY })
+          addWaypoint(edge.id, canvasPos)
+        }}
         panOnDrag={activeTool === 'pan'}
         nodesDraggable={activeTool === 'select'}
         nodesConnectable={activeTool === 'select'}

@@ -16,6 +16,13 @@ export type DiagramEdge = {
   source: string
   target: string
   label?: string
+  routePoints?: Position[]
+  arrowType?: 'none' | 'forward' | 'backward' | 'both'
+  sourceSide?: 'auto' | 'top' | 'right' | 'bottom' | 'left'
+  targetSide?: 'auto' | 'top' | 'right' | 'bottom' | 'left'
+  style?: {
+    lineStyle?: 'solid' | 'dashed' | 'dotted'
+  }
 }
 
 

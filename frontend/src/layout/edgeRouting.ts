@@ -32,11 +32,17 @@ export function routeEdges(nodes: Node[], edges: Edge[]): Edge[] {
     const sourceNode = nodesMap.get(edge.source);
     const targetNode = nodesMap.get(edge.target);
 
+    // Read user-defined overrides (supporting both top-level and data fields)
+    const userSourceSide = (edge as any).sourceSide || edge.data?.sourceSide || 'auto';
+    const userTargetSide = (edge as any).targetSide || edge.data?.targetSide || 'auto';
+
     if (!sourceNode || !targetNode) {
+      const sourceDir = userSourceSide !== 'auto' ? userSourceSide : 'right';
+      const targetDir = userTargetSide !== 'auto' ? userTargetSide : 'left';
       return {
         ...edge,
-        sourceHandle: "source-right",
-        targetHandle: "target-left",
+        sourceHandle: `source-${sourceDir}`,
+        targetHandle: `target-${targetDir}`,
       };
     }
 
@@ -49,21 +55,25 @@ export function routeEdges(nodes: Node[], edges: Edge[]): Edge[] {
     let sourceDir: 'left' | 'right' | 'top' | 'bottom';
     let targetDir: 'left' | 'right' | 'top' | 'bottom';
 
-    if (Math.abs(dx) > Math.abs(dy)) {
-      if (dx > 0) {
-        sourceDir = 'right';
-        targetDir = 'left';
-      } else {
-        sourceDir = 'left';
-        targetDir = 'right';
-      }
+    // Resolve source port direction
+    if (userSourceSide && userSourceSide !== 'auto') {
+      sourceDir = userSourceSide;
     } else {
-      if (dy > 0) {
-        sourceDir = 'bottom';
-        targetDir = 'top';
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        sourceDir = dx > 0 ? 'right' : 'left';
       } else {
-        sourceDir = 'top';
-        targetDir = 'bottom';
+        sourceDir = dy > 0 ? 'bottom' : 'top';
+      }
+    }
+
+    // Resolve target port direction
+    if (userTargetSide && userTargetSide !== 'auto') {
+      targetDir = userTargetSide;
+    } else {
+      if (Math.abs(dx) >= Math.abs(dy)) {
+        targetDir = dx > 0 ? 'left' : 'right';
+      } else {
+        targetDir = dy > 0 ? 'top' : 'bottom';
       }
     }
 

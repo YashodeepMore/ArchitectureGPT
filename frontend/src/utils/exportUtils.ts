@@ -1,46 +1,108 @@
+import { useDiagramStore } from '../store/diagramStore'
+
 /*
  * exportUtils contains browser-native handlers to export the React Flow canvas.
  *
- * It serializes the active viewport container, inlines relevant document styles,
- * and packages them into high-fidelity SVG or rasterized PNG download files.
+ * It serializes the active viewport container, inlines relevant document styles (safely
+ * filtering out external assets to avoid canvas tainting), and exports the entire diagram bounding box.
  */
 
-// Serializes the current React Flow viewport and returns the SVG string and dimensions.
+// Serializes the entire diagram bounds and returns the SVG string and dimensions.
 function serializeToSvgString(): { svgString: string; width: number; height: number } | null {
   const reactFlowEl = document.querySelector('.react-flow') as HTMLElement
   const viewportEl = document.querySelector('.react-flow__viewport') as HTMLElement
   if (!reactFlowEl || !viewportEl) return null
 
-  // Capture canvas viewport bounds
-  const rect = reactFlowEl.getBoundingClientRect()
-  const width = rect.width
-  const height = rect.height
+  const diagram = useDiagramStore.getState().diagram
+  if (!diagram) return null
 
-  // Extract transform style (pan & zoom) from active viewport
-  const transform = viewportEl.style.transform || 'translate(0px, 0px) scale(1)'
+  // Calculate diagram bounds from nodes and groups
+  let minX = Infinity
+  let minY = Infinity
+  let maxX = -Infinity
+  let maxY = -Infinity
 
-  // Inline document styles so the export matches canvas themes
+  diagram.nodes.forEach((node) => {
+    const w = (node as any).width || 180
+    const h = (node as any).height || 64
+    minX = Math.min(minX, node.position.x)
+    minY = Math.min(minY, node.position.y)
+    maxX = Math.max(maxX, node.position.x + w)
+    maxY = Math.max(maxY, node.position.y + h)
+  })
+
+  diagram.groups.forEach((group) => {
+    minX = Math.min(minX, group.position.x)
+    minY = Math.min(minY, group.position.y)
+    maxX = Math.max(maxX, group.position.x + (group.width || 400))
+    maxY = Math.max(maxY, group.position.y + (group.height || 300))
+  })
+
+  // If no elements, default to viewport bounds
+  if (minX === Infinity) {
+    const rect = reactFlowEl.getBoundingClientRect()
+    return {
+      svgString: `
+        <svg xmlns="http://www.w3.org/2000/svg" width="${rect.width}" height="${rect.height}" viewBox="0 0 ${rect.width} ${rect.height}">
+          <foreignObject x="0" y="0" width="100%" height="100%">
+            <div xmlns="http://www.w3.org/1999/xhtml" style="width: 100%; height: 100%;"></div>
+          </foreignObject>
+        </svg>
+      `,
+      width: rect.width,
+      height: rect.height,
+    }
+  }
+
+  // Add margin padding to bounds
+  const padding = 60
+  minX -= padding
+  minY -= padding
+  maxX += padding
+  maxY += padding
+
+  const width = maxX - minX
+  const height = maxY - minY
+
+  // Inline CSS styles but exclude external dependencies to prevent canvas tainting
   let cssStyles = ''
   for (const sheet of Array.from(document.styleSheets)) {
     try {
       for (const rule of Array.from(sheet.cssRules)) {
-        cssStyles += rule.cssText + '\n'
+        const text = rule.cssText
+        // Remove rules containing external fonts or imports which cause security errors in Canvas
+        if (
+          text.includes('@import') ||
+          text.includes('@font-face') ||
+          text.includes('http://') ||
+          text.includes('https://')
+        ) {
+          continue
+        }
+        cssStyles += text + '\n'
       }
     } catch (e) {
-      // Avoid security issues with cross-origin stylesheets
+      // Ignore cross-origin stylesheet errors
     }
   }
 
-  // Clone viewport content and embed within a foreignObject tag
+  // Clone viewport content and clean up interaction/selection overlays
   const clone = viewportEl.cloneNode(true) as HTMLElement
-  
+  clone.querySelectorAll('.react-flow__nodesselection-rect').forEach((el) => el.remove())
+  clone.querySelectorAll('.react-flow__selection').forEach((el) => el.remove())
+  clone.querySelectorAll('.waypoint-handles').forEach((el) => el.remove())
+  clone.querySelectorAll('.orthogonal-segment-overlay').forEach((el) => el.remove())
+
+  // Force position offset in style to render the entire bounding box starting at (0, 0)
+  const transformStyle = `translate(${-minX}px, ${-minY}px) scale(1)`
+
   const svgString = `
     <svg xmlns="http://www.w3.org/2000/svg" width="${width}" height="${height}" viewBox="0 0 ${width} ${height}">
       <style>
         ${cssStyles}
         .react-flow__viewport {
-          transform: ${transform} !important;
-          transform-origin: 0 0;
+          transform: ${transformStyle} !important;
+          transform-origin: 0 0 !important;
         }
       </style>
       <foreignObject x="0" y="0" width="100%" height="100%">

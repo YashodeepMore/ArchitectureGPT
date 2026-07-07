@@ -22,6 +22,12 @@ export function PropertiesPanel() {
   const updateGroupLabel = useDiagramStore((state) => state.updateGroupLabel)
   const updateGroupSize = useDiagramStore((state) => state.updateGroupSize)
   const updateEdgeLabel = useDiagramStore((state) => state.updateEdgeLabel)
+  const updateEdgeArrowType = useDiagramStore((state) => state.updateEdgeArrowType)
+  const updateEdgeLineStyle = useDiagramStore((state) => state.updateEdgeLineStyle)
+  const updateEdgeSourceSide = useDiagramStore((state) => state.updateEdgeSourceSide)
+  const updateEdgeTargetSide = useDiagramStore((state) => state.updateEdgeTargetSide)
+  const addWaypoint = useDiagramStore((state) => state.addWaypoint)
+  const deleteWaypoint = useDiagramStore((state) => state.deleteWaypoint)
   const deleteSelected = useDiagramStore((state) => state.deleteSelected)
 
   if (!diagram) return null
@@ -223,6 +229,70 @@ export function PropertiesPanel() {
               </div>
 
               <div className="properties-group">
+                <label>Arrow Direction</label>
+                <select
+                  className="properties-input"
+                  value={activeEdge.arrowType || 'none'}
+                  onChange={(e) => updateEdgeArrowType(activeEdge!.id, e.target.value as any)}
+                >
+                  <option value="none">None</option>
+                  <option value="forward">Forward</option>
+                  <option value="backward">Backward</option>
+                  <option value="both">Both</option>
+                </select>
+              </div>
+
+              <div className="properties-group">
+                <label>Line Style</label>
+                <select
+                  className="properties-input"
+                  value={activeEdge.style?.lineStyle || 'solid'}
+                  onChange={(e) => updateEdgeLineStyle(activeEdge!.id, e.target.value as any)}
+                >
+                  <option value="solid">Solid</option>
+                  <option value="dashed">Dashed</option>
+                  <option value="dotted">Dotted</option>
+                </select>
+              </div>
+
+              <div className="properties-group">
+                <label>Source Connection Side</label>
+                <select
+                  className="properties-input"
+                  value={activeEdge.sourceSide || 'auto'}
+                  onChange={(e) => updateEdgeSourceSide(activeEdge!.id, e.target.value as any)}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+
+              <div className="properties-group">
+                <label>Target Connection Side</label>
+                <select
+                  className="properties-input"
+                  value={activeEdge.targetSide || 'auto'}
+                  onChange={(e) => updateEdgeTargetSide(activeEdge!.id, e.target.value as any)}
+                >
+                  <option value="auto">Auto</option>
+                  <option value="top">Top</option>
+                  <option value="bottom">Bottom</option>
+                  <option value="left">Left</option>
+                  <option value="right">Right</option>
+                </select>
+              </div>
+
+              <div className="properties-group">
+                <label>Edge Type</label>
+                <select className="properties-input" disabled value="orthogonal">
+                  <option value="orthogonal">Orthogonal</option>
+                </select>
+              </div>
+
+              <div className="properties-group">
                 <label>Connection</label>
                 <div className="properties-group" style={{ gap: '4px' }}>
                   <span style={{ fontSize: '11px', color: '#475569' }}>
@@ -232,6 +302,63 @@ export function PropertiesPanel() {
                     Target: <strong style={{ fontFamily: 'monospace' }}>{activeEdge.target}</strong>
                   </span>
                 </div>
+              </div>
+
+              <div className="properties-group" style={{ borderTop: '1px dashed #e2e8f0', paddingTop: '12px' }}>
+                <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>Waypoints ({activeEdge.routePoints?.length || 0})</span>
+                </label>
+                
+                {activeEdge.routePoints && activeEdge.routePoints.length > 0 ? (
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', maxHeight: '140px', overflowY: 'auto', marginBottom: '8px', border: '1px solid #e2e8f0', borderRadius: '4px', padding: '6px', background: '#f8fafc' }} className="nodrag nopan">
+                    {activeEdge.routePoints.map((pt, idx) => (
+                      <div key={idx} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                        <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>#{idx + 1}</span>
+                        <span style={{ fontSize: '10px', fontFamily: 'monospace', color: '#334155', flex: 1 }}>
+                          x: {pt.x}, y: {pt.y}
+                        </span>
+                        <button
+                          type="button"
+                          style={{
+                            padding: '2px 6px',
+                            background: '#fef2f2',
+                            color: '#ef4444',
+                            border: '1px solid #fee2e2',
+                            borderRadius: '4px',
+                            fontSize: '9px',
+                            fontWeight: 600,
+                            cursor: 'pointer',
+                          }}
+                          onClick={() => deleteWaypoint(activeEdge!.id, idx)}
+                          title="Remove waypoint"
+                        >
+                          Remove
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ fontSize: '11px', color: '#94a3b8', margin: '4px 0 8px 0' }}>No manual waypoints. Edge uses direct path.</p>
+                )}
+
+                <button
+                  type="button"
+                  className="sidebar-tool-btn"
+                  onClick={() => addWaypoint(activeEdge!.id)}
+                  style={{
+                    width: '100%',
+                    background: '#f0fdf4',
+                    color: '#16a34a',
+                    border: '1px solid #dcfce7',
+                    justifyContent: 'center',
+                    fontSize: '11px',
+                    fontWeight: 600,
+                    padding: '6px',
+                    cursor: 'pointer',
+                  }}
+                >
+                  + Add Waypoint
+                </button>
               </div>
 
               <div style={{ marginTop: 'auto', paddingTop: '16px' }}>

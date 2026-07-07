@@ -9,6 +9,7 @@
 import { create } from 'zustand'
 import type { Diagram, Position } from '../types/diagram'
 import { layoutDiagram } from '../utils/diagramToReactFlow'
+import { getOrthogonalPath } from '../utils/orthogonalRouting'
 
 type DiagramStore = {
   // The Diagram document is the application's single source of truth.
@@ -59,6 +60,20 @@ type DiagramStore = {
   updateEdge: (id: string, connection: { source: string; target: string }) => void
   // Updates the name/label of a specific edge in the Diagram document.
   updateEdgeLabel: (id: string, label: string) => void
+  // Updates the arrow type of a specific edge in the Diagram document.
+  updateEdgeArrowType: (id: string, arrowType: 'none' | 'forward' | 'backward' | 'both') => void
+  // Updates the line style of a specific edge in the Diagram document.
+  updateEdgeLineStyle: (id: string, lineStyle: 'solid' | 'dashed' | 'dotted') => void
+  // Updates the source connection side of a specific edge.
+  updateEdgeSourceSide: (id: string, sourceSide: 'auto' | 'top' | 'right' | 'bottom' | 'left') => void
+  // Updates the target connection side of a specific edge.
+  updateEdgeTargetSide: (id: string, targetSide: 'auto' | 'top' | 'right' | 'bottom' | 'left') => void
+  // Updates the routePoints / waypoints list of a specific edge in the Diagram document.
+  updateEdgeRoutePoints: (id: string, routePoints: Position[], skipHistory?: boolean) => void
+  // Inserts a new waypoint at the clicked position or the midpoint of the longest segment of the edge.
+  addWaypoint: (edgeId: string, position?: Position, insertIdx?: number) => void
+  // Removes a specific waypoint index from the edge's routePoints.
+  deleteWaypoint: (edgeId: string, index: number) => void
   // Removes a specific edge connection by its ID in the Diagram document.
   removeEdge: (id: string) => void
   // Clipboard and copy/paste/duplicate state
@@ -412,6 +427,261 @@ export const useDiagramStore = create<DiagramStore>((set, get) => ({
           ...state.diagram,
           edges: state.diagram.edges.map((edge) =>
             edge.id === id ? { ...edge, label } : edge
+          ),
+        },
+      }
+    }),
+
+  // Updates the arrow type of a specific edge in the Diagram document.
+  updateEdgeArrowType: (id, arrowType) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id ? { ...edge, arrowType } : edge
+          ),
+        },
+      }
+    }),
+
+  // Updates the line style of a specific edge in the Diagram document.
+  updateEdgeLineStyle: (id, lineStyle) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id
+              ? { ...edge, style: { ...edge.style, lineStyle } }
+              : edge
+          ),
+        },
+      }
+    }),
+
+  // Updates the source connection side of a specific edge.
+  updateEdgeSourceSide: (id, sourceSide) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id ? { ...edge, sourceSide } : edge
+          ),
+        },
+      }
+    }),
+
+  // Updates the target connection side of a specific edge.
+  updateEdgeTargetSide: (id, targetSide) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      return {
+        isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id ? { ...edge, targetSide } : edge
+          ),
+        },
+      }
+    }),
+
+  // Updates the routePoints / waypoints list of a specific edge in the Diagram document.
+  updateEdgeRoutePoints: (id, routePoints, skipHistory = false) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      const historyUpdate = skipHistory
+        ? {}
+        : {
+            past: [...state.past, cloneDiagram(state.diagram)],
+            future: [],
+          }
+      return {
+        ...historyUpdate,
+        isDirty: true,
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((edge) =>
+            edge.id === id ? { ...edge, routePoints } : edge
+          ),
+        },
+      }
+    }),
+
+  // Inserts a new waypoint at the clicked position or the midpoint of the longest segment of the edge.
+  addWaypoint: (edgeId, position, insertIdx) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      const edge = state.diagram.edges.find((e) => e.id === edgeId)
+      if (!edge) return {}
+
+      const pPoints = edge.routePoints || []
+      let nextPoints = [...pPoints]
+
+      if (position && typeof insertIdx === 'number') {
+        // Direct segment split from double-click overlay
+        nextPoints.splice(insertIdx, 0, {
+          x: Math.round(position.x),
+          y: Math.round(position.y),
+        })
+      } else {
+        // Fallback when insertIdx is not provided (e.g., properties panel or canvas double click)
+        const sourceNode = state.diagram.nodes.find((n) => n.id === edge.source) || state.diagram.groups.find((g) => g.id === edge.source)
+        const targetNode = state.diagram.nodes.find((n) => n.id === edge.target) || state.diagram.groups.find((g) => g.id === edge.target)
+        if (!sourceNode || !targetNode) return {}
+
+        const sourceW = (sourceNode as any).width || 180
+        const sourceH = (sourceNode as any).height || 64
+        const targetW = (targetNode as any).width || 180
+        const targetH = (targetNode as any).height || 64
+
+        const p1 = {
+          x: sourceNode.position.x + sourceW / 2,
+          y: sourceNode.position.y + sourceH / 2,
+        }
+        const p2 = {
+          x: targetNode.position.x + targetW / 2,
+          y: targetNode.position.y + targetH / 2,
+        }
+
+        // Resolve custom/automatic connection sides
+        const userSourceSide = edge.sourceSide || 'auto'
+        const userTargetSide = edge.targetSide || 'auto'
+
+        let sourceDir = 'right'
+        let targetDir = 'left'
+
+        const dx = p2.x - p1.x
+        const dy = p2.y - p1.y
+
+        if (userSourceSide && userSourceSide !== 'auto') {
+          sourceDir = userSourceSide
+        } else {
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            sourceDir = dx > 0 ? 'right' : 'left'
+          } else {
+            sourceDir = dy > 0 ? 'bottom' : 'top'
+          }
+        }
+
+        if (userTargetSide && userTargetSide !== 'auto') {
+          targetDir = userTargetSide
+        } else {
+          if (Math.abs(dx) >= Math.abs(dy)) {
+            targetDir = dx > 0 ? 'left' : 'right'
+          } else {
+            targetDir = dy > 0 ? 'top' : 'bottom'
+          }
+        }
+
+        // Get the current orthogonal path
+        const computedOrtho = getOrthogonalPath(
+          p1,
+          pPoints,
+          p2,
+          sourceDir,
+          targetDir
+        )
+
+        let insertIdxResolved = 0
+        let newWaypoint = { x: 0, y: 0 }
+
+        if (position) {
+          // Find closest segment in computedOrtho to click position
+          const getDistanceToSegment = (p: Position, a: Position, b: Position) => {
+            const dx = b.x - a.x
+            const dy = b.y - a.y
+            const l2 = dx * dx + dy * dy
+            if (l2 === 0) return Math.hypot(p.x - a.x, p.y - a.y)
+            let t = ((p.x - a.x) * dx + (p.y - a.y) * dy) / l2
+            t = Math.max(0, Math.min(1, t))
+            return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy))
+          }
+
+          let minDistance = Infinity
+          let closestIdx = 0
+          for (let i = 0; i < computedOrtho.length - 1; i++) {
+            const dist = getDistanceToSegment(position, computedOrtho[i], computedOrtho[i+1])
+            if (dist < minDistance) {
+              minDistance = dist
+              closestIdx = i
+            }
+          }
+          const segP2 = computedOrtho[closestIdx + 1]
+          insertIdxResolved = segP2.waypointIndex
+          newWaypoint = {
+            x: Math.round(position.x),
+            y: Math.round(position.y),
+          }
+        } else {
+          // Find longest segment to insert waypoint
+          let maxLen = -1
+          let splitIdx = 0
+          for (let i = 0; i < computedOrtho.length - 1; i++) {
+            const len = Math.hypot(computedOrtho[i+1].x - computedOrtho[i].x, computedOrtho[i+1].y - computedOrtho[i].y)
+            if (len > maxLen) {
+              maxLen = len
+              splitIdx = i
+            }
+          }
+          const segP1 = computedOrtho[splitIdx]
+          const segP2 = computedOrtho[splitIdx + 1]
+          insertIdxResolved = segP2.waypointIndex
+          newWaypoint = {
+            x: Math.round((segP1.x + segP2.x) / 2),
+            y: Math.round((segP1.y + segP2.y) / 2),
+          }
+        }
+
+        nextPoints.splice(insertIdxResolved, 0, newWaypoint)
+      }
+
+      return {
+        isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((e) =>
+            e.id === edgeId ? { ...e, routePoints: nextPoints } : e
+          ),
+        },
+      }
+    }),
+
+  // Removes a specific waypoint index from the edge's routePoints.
+  deleteWaypoint: (edgeId, index) =>
+    set((state) => {
+      if (!state.diagram) return {}
+      const edge = state.diagram.edges.find((e) => e.id === edgeId)
+      if (!edge || !edge.routePoints) return {}
+
+      const nextPoints = edge.routePoints.filter((_, idx) => idx !== index)
+
+      return {
+        isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        diagram: {
+          ...state.diagram,
+          edges: state.diagram.edges.map((e) =>
+            e.id === edgeId ? { ...e, routePoints: nextPoints } : e
           ),
         },
       }

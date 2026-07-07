@@ -46,7 +46,16 @@ export function diagramToReactFlow(diagram: Diagram) {
     source: edge.source,
     target: edge.target,
     label: edge.label,
-  }))
+    sourceSide: edge.sourceSide || 'auto',
+    targetSide: edge.targetSide || 'auto',
+    data: {
+      routePoints: edge.routePoints,
+      arrowType: edge.arrowType,
+      style: edge.style,
+      sourceSide: edge.sourceSide || 'auto',
+      targetSide: edge.targetSide || 'auto',
+    },
+  })) as any
 
   const rawNodes = [...groupNodes, ...diagramNodes]
   
