@@ -6,25 +6,29 @@
  * the DiagramStore to enable/disable specific actions.
  */
 
-import { useState } from 'react'
 import { useDiagramStore } from '../store/diagramStore'
 
 type SidebarProps = {
   hasDiagram: boolean
   isCollapsed: boolean
   onToggleCollapse: () => void
+  activeTool: 'select' | 'pan'
+  onChangeTool: (tool: 'select' | 'pan') => void
 }
 
-export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarProps) {
+export function Sidebar({
+  hasDiagram,
+  isCollapsed,
+  onToggleCollapse,
+  activeTool,
+  onChangeTool,
+}: SidebarProps) {
   const selectedNodeIds = useDiagramStore((state) => state.selectedNodeIds)
   const selectedEdgeIds = useDiagramStore((state) => state.selectedEdgeIds)
   const deleteSelected = useDiagramStore((state) => state.deleteSelected)
   const addNode = useDiagramStore((state) => state.addNode)
   const addGroup = useDiagramStore((state) => state.addGroup)
   const addEdge = useDiagramStore((state) => state.addEdge)
-
-  // Internal active tools state
-  const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select')
 
   const hasSelection = selectedNodeIds.length > 0 || selectedEdgeIds.length > 0
 
@@ -75,7 +79,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
         <button
           type="button"
           className={`sidebar-tool-btn ${activeTool === 'select' ? 'active' : ''}`}
-          onClick={() => setActiveTool('select')}
+          onClick={() => onChangeTool('select')}
           title="Select Mode (Pointer)"
         >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -87,7 +91,7 @@ export function Sidebar({ hasDiagram, isCollapsed, onToggleCollapse }: SidebarPr
         <button
           type="button"
           className={`sidebar-tool-btn ${activeTool === 'pan' ? 'active' : ''}`}
-          onClick={() => setActiveTool('pan')}
+          onClick={() => onChangeTool('pan')}
           title="Pan Mode (Hand)"
         >
           <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">

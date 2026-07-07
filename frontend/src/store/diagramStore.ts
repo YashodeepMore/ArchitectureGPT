@@ -14,6 +14,10 @@ type DiagramStore = {
   // The Diagram document is the application's single source of truth.
   diagram: Diagram | null
   
+  // Track history stacks for Undo / Redo
+  past: Diagram[]
+  future: Diagram[]
+
   // Track selected elements to coordinate editor actions (like Delete Selected)
   selectedNodeIds: string[]
   selectedEdgeIds: string[]
@@ -29,7 +33,6 @@ type DiagramStore = {
   selectAll: () => void
   addNode: () => void
 
-  
   // Persists node movement back into the Diagram document.
   updateNodePosition: (id: string, position: Position) => void
   // Persists group movement back into the Diagram document.
@@ -58,18 +61,35 @@ type DiagramStore = {
   updateEdgeLabel: (id: string, label: string) => void
   // Removes a specific edge connection by its ID in the Diagram document.
   removeEdge: (id: string) => void
+  // Clipboard and copy/paste/duplicate state
+  clipboard: {
+    nodes: any[]
+    groups: any[]
+  } | null
+  copy: () => void
+  paste: () => void
+  duplicate: () => void
+  
+  // Undo / Redo history actions
+  undo: () => void
+  redo: () => void
+}
+const cloneDiagram = (d: any) => {
+  if (!d) return null
+  return JSON.parse(JSON.stringify(d))
 }
 
-
-
-export const useDiagramStore = create<DiagramStore>((set) => ({
+export const useDiagramStore = create<DiagramStore>((set, get) => ({
   diagram: null,
+  past: [],
+  future: [],
   selectedNodeIds: [],
   selectedEdgeIds: [],
   isDirty: false,
+  clipboard: null,
   
-  setDiagram: (diagram) => set({ diagram, isDirty: false }),
-  resetDiagram: () => set({ diagram: null, selectedNodeIds: [], selectedEdgeIds: [], isDirty: false }),
+  setDiagram: (diagram) => set({ diagram, past: [], future: [], isDirty: false }),
+  resetDiagram: () => set({ diagram: null, past: [], future: [], selectedNodeIds: [], selectedEdgeIds: [], isDirty: false }),
   setSelectedNodeIds: (selectedNodeIds) => set({ selectedNodeIds }),
   setSelectedEdgeIds: (selectedEdgeIds) => set({ selectedEdgeIds }),
   setIsDirty: (isDirty) => set({ isDirty }),
@@ -100,6 +120,8 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       }
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         diagram: {
           ...state.diagram,
           nodes: [...state.diagram.nodes, newNode],
@@ -178,6 +200,10 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       if (groupToRemove) {
         return {
           isDirty: true,
+          past: [...state.past, cloneDiagram(state.diagram)],
+          future: [],
+          selectedNodeIds: state.selectedNodeIds.filter((nid) => nid !== id),
+          selectedEdgeIds: state.selectedEdgeIds.filter((eid) => eid !== id),
           diagram: {
             ...state.diagram,
             groups: state.diagram.groups.filter((g) => g.id !== id),
@@ -200,6 +226,10 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
 
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
+        selectedNodeIds: state.selectedNodeIds.filter((nid) => nid !== id),
+        selectedEdgeIds: state.selectedEdgeIds.filter((eid) => eid !== id),
         diagram: {
           ...state.diagram,
           nodes: state.diagram.nodes.filter((node) => node.id !== id),
@@ -251,6 +281,8 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
 
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         selectedNodeIds: [],
         selectedEdgeIds: [],
         diagram: {
@@ -276,6 +308,8 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       }
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         diagram: {
           ...state.diagram,
           groups: [...state.diagram.groups, newGroup],
@@ -332,6 +366,8 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       }
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         diagram: {
           ...state.diagram,
           edges: [...state.diagram.edges, newEdge],
@@ -355,6 +391,8 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
 
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         diagram: {
           ...state.diagram,
           edges: state.diagram.edges.map((edge) =>
@@ -385,6 +423,8 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       if (!state.diagram) return {}
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         diagram: {
           ...state.diagram,
           edges: state.diagram.edges.filter((edge) => edge.id !== id),
@@ -398,9 +438,129 @@ export const useDiagramStore = create<DiagramStore>((set) => ({
       if (!state.diagram) return {}
       return {
         isDirty: true,
+        past: [...state.past, cloneDiagram(state.diagram)],
+        future: [],
         diagram: layoutDiagram(state.diagram),
       }
     }),
+
+  // Reverts the diagram state to the last checkpoint in the history stack.
+  undo: () =>
+    set((state) => {
+      if (state.past.length === 0) return {}
+      const previous = state.past[state.past.length - 1]
+      const newPast = state.past.slice(0, state.past.length - 1)
+      const current = state.diagram ? cloneDiagram(state.diagram) : null
+      return {
+        past: newPast,
+        future: current ? [current, ...state.future] : state.future,
+        diagram: previous,
+        isDirty: true,
+      }
+    }),
+
+  // Restores a previously reverted diagram state from the forward history stack.
+  redo: () =>
+    set((state) => {
+      if (state.future.length === 0) return {}
+      const next = state.future[0]
+      const newFuture = state.future.slice(1)
+      const current = state.diagram ? cloneDiagram(state.diagram) : null
+      return {
+        past: current ? [...state.past, current] : state.past,
+        future: newFuture,
+        diagram: next,
+        isDirty: true,
+      }
+    }),
+
+  // Copy selected nodes and groups into clipboard
+  copy: () =>
+    set((state) => {
+      if (!state.diagram) return {}
+      const selectedNodes = state.diagram.nodes.filter((n) => state.selectedNodeIds.includes(n.id))
+      const selectedGroups = state.diagram.groups.filter((g) => state.selectedNodeIds.includes(g.id))
+      
+      if (selectedNodes.length === 0 && selectedGroups.length === 0) return {}
+      
+      return {
+        clipboard: {
+          nodes: cloneDiagram(selectedNodes),
+          groups: cloneDiagram(selectedGroups),
+        },
+      }
+    }),
+
+  // Paste nodes and groups from clipboard with position offsets and new unique IDs
+  paste: () =>
+    set((state) => {
+      if (!state.diagram || !state.clipboard) return {}
+      
+      const newPast = [...state.past, cloneDiagram(state.diagram)]
+      const mapping: Record<string, string> = {}
+      const timeOffset = Date.now()
+
+      // Clone groups
+      const nextGroups = [...state.diagram.groups]
+      const pastedGroupIds: string[] = []
+      state.clipboard.groups.forEach((group) => {
+        const newGroupId = `group_paste_${timeOffset}_${Math.floor(Math.random() * 1000)}`
+        mapping[group.id] = newGroupId
+        pastedGroupIds.push(newGroupId)
+        nextGroups.push({
+          ...group,
+          id: newGroupId,
+          position: {
+            x: group.position.x + 30,
+            y: group.position.y + 30,
+          },
+        })
+      })
+
+      // Clone nodes
+      const nextNodes = [...state.diagram.nodes]
+      const pastedNodeIds: string[] = []
+      state.clipboard.nodes.forEach((node) => {
+        const timeOffsetNode = Date.now()
+        const newNodeId = `node_paste_${timeOffsetNode}_${Math.floor(Math.random() * 1000)}`
+        pastedNodeIds.push(newNodeId)
+        
+        let parentId = null
+        if (node.parent) {
+          parentId = mapping[node.parent] || node.parent
+        }
+
+        nextNodes.push({
+          ...node,
+          id: newNodeId,
+          parent: parentId,
+          position: {
+            x: node.position.x + 30,
+            y: node.position.y + 30,
+          },
+        })
+      })
+
+      return {
+        isDirty: true,
+        past: newPast,
+        future: [],
+        selectedNodeIds: [...pastedNodeIds, ...pastedGroupIds],
+        selectedEdgeIds: [],
+        diagram: {
+          ...state.diagram,
+          groups: nextGroups,
+          nodes: nextNodes,
+        },
+      }
+    }),
+
+  // Duplicate current selection directly (one-step copy/paste)
+  duplicate: () => {
+    const { copy, paste } = get()
+    copy()
+    paste()
+  },
 }))
 
 

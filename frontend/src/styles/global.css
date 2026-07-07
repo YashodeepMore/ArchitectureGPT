@@ -759,8 +759,12 @@ button:disabled {
 }
 
 .editor-properties-panel.collapsed {
-  width: 0;
-  border-left: none;
+  width: 40px;
+}
+
+.editor-properties-panel.collapsed .properties-header {
+  padding: 12px 0;
+  justify-content: center;
 }
 
 .properties-header {
@@ -963,6 +967,99 @@ button:disabled {
   font-weight: 600;
   margin: 4px 0;
 }
+
+/* Custom Floating Zoom Controls */
+.editor-zoom-controls {
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  background: #ffffff;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  padding: 4px;
+  box-shadow: var(--shadow-md);
+  z-index: 30;
+}
+
+.zoom-btn {
+  height: 28px;
+  width: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.zoom-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+.zoom-text-btn {
+  height: 28px;
+  padding: 0 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  color: #64748b;
+  font-weight: 600;
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.zoom-text-btn:hover {
+  background: #f1f5f9;
+  color: #0f172a;
+}
+
+/* Custom styling for Group / Container Nodes */
+.react-flow__node-group {
+  background: rgba(248, 250, 252, 0.4) !important;
+  border: 2px dashed #cbd5e1 !important;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+
+.react-flow__node-group.selected {
+  border: 2.5px solid #3b82f6 !important;
+  background: rgba(59, 130, 246, 0.02) !important;
+  box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1) !important;
+}
+
+.diagram-group-label {
+  position: absolute;
+  top: -24px;
+  left: 0;
+  font-size: 11px;
+  font-weight: 700;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  background: #ffffff;
+  padding: 2px 6px;
+  border: 1px solid #cbd5e1;
+  border-radius: 4px;
+  pointer-events: none;
+}
+
+.react-flow__node-group.selected .diagram-group-label {
+  color: #2563eb;
+  border-color: #3b82f6;
+}
+
+
 
 
 

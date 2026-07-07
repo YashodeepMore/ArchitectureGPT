@@ -7,6 +7,7 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useDiagramStore } from '../store/diagramStore'
+import { exportToSVG, exportToPNG } from '../utils/exportUtils'
 
 type ToolbarProps = {
   hasDiagram: boolean
@@ -32,6 +33,10 @@ export function Toolbar({
   const autoLayout = useDiagramStore((state) => state.autoLayout)
   const diagram = useDiagramStore((state) => state.diagram)
   const isDirty = useDiagramStore((state) => state.isDirty)
+  const undo = useDiagramStore((state) => state.undo)
+  const redo = useDiagramStore((state) => state.redo)
+  const past = useDiagramStore((state) => state.past)
+  const future = useDiagramStore((state) => state.future)
 
   const [isMenuOpen, setIsMenuOpen] = useState(false)
   const menuRef = useRef<HTMLDivElement>(null)
@@ -57,11 +62,11 @@ export function Toolbar({
   }
 
   const handleUndo = () => {
-    alert('Undo feature is coming soon!')
+    undo()
   }
 
   const handleRedo = () => {
-    alert('Redo feature is coming soon!')
+    redo()
   }
 
   // Serializes the current Diagram document and triggers a browser download.
@@ -129,6 +134,7 @@ export function Toolbar({
         <button
           type="button"
           className="toolbar-secondary"
+          disabled={!hasDiagram || past.length === 0}
           onClick={handleUndo}
           title="Undo last change"
         >
@@ -138,6 +144,7 @@ export function Toolbar({
         <button
           type="button"
           className="toolbar-secondary"
+          disabled={!hasDiagram || future.length === 0}
           onClick={handleRedo}
           title="Redo last change"
         >
@@ -207,7 +214,7 @@ export function Toolbar({
                 role="menuitem"
                 onClick={() => {
                   setIsMenuOpen(false)
-                  alert('Export SVG is coming soon!')
+                  exportToSVG(`architecture_${Date.now()}.svg`)
                 }}
               >
                 Export SVG
@@ -218,7 +225,7 @@ export function Toolbar({
                 role="menuitem"
                 onClick={() => {
                   setIsMenuOpen(false)
-                  alert('Export PNG is coming soon!')
+                  exportToPNG(`architecture_${Date.now()}.png`)
                 }}
               >
                 Export PNG

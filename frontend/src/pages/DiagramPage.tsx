@@ -56,6 +56,7 @@ export function DiagramPage() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false)
+  const [activeTool, setActiveTool] = useState<'select' | 'pan'>('select')
   
   const fileInputRef = useRef<HTMLInputElement>(null)
 
@@ -68,6 +69,11 @@ export function DiagramPage() {
   const deleteSelected = useDiagramStore((state) => state.deleteSelected)
   const setSelectedNodeIds = useDiagramStore((state) => state.setSelectedNodeIds)
   const setSelectedEdgeIds = useDiagramStore((state) => state.setSelectedEdgeIds)
+  const undo = useDiagramStore((state) => state.undo)
+  const redo = useDiagramStore((state) => state.redo)
+  const copy = useDiagramStore((state) => state.copy)
+  const paste = useDiagramStore((state) => state.paste)
+  const duplicate = useDiagramStore((state) => state.duplicate)
 
   // Submits the prompt, triggers layout for the raw result, and saves it.
   async function handleGenerate() {
@@ -179,6 +185,36 @@ export function DiagramPage() {
         fileInputRef.current?.click()
       }
 
+      // Ctrl + Z -> Undo
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault()
+        undo()
+      }
+
+      // Ctrl + Y -> Redo
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+        event.preventDefault()
+        redo()
+      }
+
+      // Ctrl + C -> Copy
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'c') {
+        event.preventDefault()
+        copy()
+      }
+
+      // Ctrl + V -> Paste
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'v') {
+        event.preventDefault()
+        paste()
+      }
+
+      // Ctrl + D -> Duplicate
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'd') {
+        event.preventDefault()
+        duplicate()
+      }
+
       // Ctrl + A -> Select all
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'a') {
         event.preventDefault()
@@ -201,7 +237,7 @@ export function DiagramPage() {
 
     window.addEventListener('keydown', handleKeyDown)
     return () => window.removeEventListener('keydown', handleKeyDown)
-  }, [diagram, selectAll, deleteSelected, setSelectedNodeIds, setSelectedEdgeIds])
+  }, [diagram, selectAll, deleteSelected, setSelectedNodeIds, setSelectedEdgeIds, undo, redo, copy, paste, duplicate])
 
   return (
     <ReactFlowProvider>
@@ -233,6 +269,8 @@ export function DiagramPage() {
             hasDiagram={!!diagram}
             isCollapsed={isSidebarCollapsed}
             onToggleCollapse={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
+            activeTool={activeTool}
+            onChangeTool={setActiveTool}
           />
 
           <main className="editor-workspace">
@@ -243,7 +281,7 @@ export function DiagramPage() {
             ) : null}
 
             {diagram ? (
-              <DiagramCanvas />
+              <DiagramCanvas activeTool={activeTool} />
             ) : (
               <section className="empty-state">
                 <div className="empty-state-card">

@@ -23,9 +23,10 @@ import { diagramToReactFlow } from '../../utils/diagramToReactFlow'
 import { nodeTypes } from './nodeTypes'
 import type { DiagramNodeData } from '../../utils/diagramToReactFlow'
 import { CustomEdge } from './CustomEdge'
+import { ZoomControls } from './ZoomControls'
 
 // This component connects the document model (DiagramStore) to the renderer (React Flow).
-export function DiagramCanvas() {
+export function DiagramCanvas({ activeTool }: { activeTool: 'select' | 'pan' }) {
   const diagram = useDiagramStore((state) => state.diagram)
   const updateNodePosition = useDiagramStore((state) => state.updateNodePosition)
   const updateGroupPosition = useDiagramStore((state) => state.updateGroupPosition)
@@ -147,11 +148,16 @@ export function DiagramCanvas() {
         onEdgesChange={handleEdgesChange}
         onConnect={handleConnect}
         onReconnect={handleReconnect}
+        panOnDrag={activeTool === 'pan'}
+        nodesDraggable={activeTool === 'select'}
+        nodesConnectable={activeTool === 'select'}
+        elementsSelectable={activeTool === 'select'}
         fitView
       >
         <Background />
         <Controls />
       </ReactFlow>
+      <ZoomControls />
     </div>
   )
 }
