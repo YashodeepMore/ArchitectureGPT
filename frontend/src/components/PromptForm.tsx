@@ -8,7 +8,9 @@ type PromptFormProps = {
   onSubmit: () => void
 }
 
+// User interface component to collect the prompt text and submit the request to generate a new diagram document.
 export function PromptForm({
+
   prompt,
   isLoading,
   error,

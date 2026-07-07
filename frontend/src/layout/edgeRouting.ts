@@ -1,7 +1,10 @@
 import type { Node, Edge } from "@xyflow/react";
 
+// Dynamically routes diagram edges by calculating the optimal connector handles (top, bottom, left, right)
+// based on relative node positions, ensuring edges connect cleanly.
 export function routeEdges(nodes: Node[], edges: Edge[]): Edge[] {
   const nodesMap = new Map<string, Node>(nodes.map((n) => [n.id, n]));
+
 
   // Helper to get absolute center of a node
   function getAbsoluteCenter(node: Node) {
