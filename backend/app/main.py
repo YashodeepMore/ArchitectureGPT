@@ -8,7 +8,7 @@ app = FastAPI(title='ArchitectureGPT API')
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173",
-                   "https://architecture-g4v7abmsz-lamp-of-success.vercel.app/"],
+                   "https://architecture-g4v7abmsz-lamp-of-success.vercel.app"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
